@@ -1,0 +1,480 @@
+﻿<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAMS - BMA 2026 | PT Bhumiadya Indonesia</title>
+    <link rel="stylesheet" href="styles/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <i class="fas fa-hard-hat"></i>
+                <span data-current-year-text="SAMS - BMA">SAMS - BMA 2026</span>
+            </div>
+            <button class="nav-toggle" id="navToggle">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="nav-search-wrap" id="navSearchWrap">
+                <input type="text" id="navSearchInput" class="nav-search-input" placeholder="Cari data observasi...">
+                <button type="button" id="navSearchBtn" class="nav-search-btn" aria-expanded="false" aria-label="Buka pencarian">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+            <ul class="nav-menu" id="navMenu">
+                <li><a href="#beranda" class="nav-link active">Beranda</a></li>
+                <li><a href="#info-hse" class="nav-link">Info HSE</a></li>
+                <li><a href="#p2k3-bma" class="nav-link">P2K3 BMA</a></li>
+                <li><a href="#tambahkan-observasi" class="nav-link">Tambahkan Observasi</a></li>
+                <li><a href="#safety-induction" class="nav-link">Safety Induction</a></li>
+                <li class="dropdown" id="observasiDropdown">
+                    <a href="#" class="nav-link dropdown-toggle" id="observasiToggle" aria-expanded="false" aria-controls="observasiSubmenu">
+                        Observasi <i class="fas fa-chevron-down"></i>
+                    </a>
+                    <ul class="dropdown-menu" id="observasiSubmenu">
+                        <li><a href="#data-observasi" class="dropdown-link">Data Observasi</a></li>
+                        <li><a href="#observasi-report" class="dropdown-link">Observasi Report</a></li>
+                        <li><a href="#observasi-progress" class="dropdown-link">Observasi Progress</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="beranda" class="hero">
+        <div id="heroBgLayer" class="hero-bg-layer"></div>
+        <div class="hero-overlay"></div>
+        <div class="hero-content">
+            <h1 class="hero-subtitle">PANITIA PEMBINA KESELAMATAN DAN KESEHATAN KERJA (P2K3)</h1>
+            <h2 class="hero-title">PT BHUMIADYA INDONESIA</h2>
+            <div class="factory-image"></div>
+        </div>
+    </section>
+
+    <!-- Welcome Section -->
+    <section class="welcome-section">
+        <div class="container">
+            <h2 class="section-title">WELCOME >>> SAMS (SAFETY MANAGEMENT SYSTEM)</h2>
+            <p class="welcome-text">
+                SAMS (Safety Management System) PT Bhumiadya Indonesia merupakan portal resmi PT Bhumiadya Indonesia untuk mengolahan data HSE Performance yang dilakukan oleh seluruh karyawan PT Bhumiadya Indonesia dengan tujuan Melindungi dan menjamin keselamatan setiap tenaga kerja dan orang lain di tempat kerja dan Menjamin setiap sumber produksi dapat digunakan secara aman dan efisien.
+            </p>
+            
+            <div class="action-buttons">
+                <button class="btn btn-primary" onclick="scrollToSection('tambahkan-observasi')">
+                    Klik untuk Submit Observasi
+                </button>
+            </div>
+
+            <div class="feature-cards">
+                <div class="feature-card" onclick="scrollToSection('data-observasi')">
+                    <div class="feature-icon">
+                        <i class="fas fa-file-alt"></i>
+                    </div>
+                    <h3>DATA OBSERVASI</h3>
+                </div>
+                <div class="feature-card" onclick="scrollToSection('observasi-report')">
+                    <div class="feature-icon">
+                        <i class="fas fa-chart-bar"></i>
+                    </div>
+                    <h3>OBSERVASI REPORT</h3>
+                </div>
+                <div class="feature-card" onclick="scrollToSection('observasi-progress')">
+                    <div class="feature-icon">
+                        <i class="fas fa-tasks"></i>
+                    </div>
+                    <h3>OBSERVASI PROGRESS</h3>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Info HSE Section -->
+    <section id="info-hse" class="info-hse-section">
+        <div class="container">
+            <h2 class="section-title">INFO HSE</h2>
+            <div class="info-hse-content">
+                <div class="info-image">
+                    <img id="hseInfoImage" src="assets/YEL08836.JPG.jpeg" alt="Aktivitas Safety PT Bhumiadya Indonesia">
+                </div>
+                <div class="info-text">
+                    <h3>SAFETY SEBAGAI KEBIASAAN</h3>
+                    <p>
+                        Safety bukanlah tanggung jawab dari petugas Safety (SHE Departemen) tetapi safety adalah tanggung jawab semua karyawan sehingga semua karyawan harus memahami dan melaksanakan kaidah-kaidah keselamatan kerja dalam melaksanakan pekerjaannya sehari-hari atau menjadikan safety sebagai suatu kebiasaan dalam kehidupan sehari-hari, hal ini dapat dimulai dengan melaksanakan hal-hal yang mendasar dan terlihat sepele misalnya:
+                    </p>
+                    <ol class="safety-list">
+                        <li>Tidak membuang sampah secara sembarangan atau membuang sampah pada tempat sampah yang telah disiapkan,</li>
+                        <li>Memeriksa sambungan kabel listrik dan merapikannya sebab sambungan kabel listrik yang tidak rapi merupakan salah satu penyebab timbulnya kebakaran.</li>
+                        <li>Tidak memaksakan diri dalam bekerja ketika kondisi kesehatan sedang terganggu sampai benar-benar sehat dan siap bekerja</li>
+                        <li>Tidak memaksakan untuk mengoperasikan peralatan yang rusak walaupun kerusakannya sangat kecil (rem kendaraan dalam keadaan ab normal)</li>
+                        <li>Melakukan pemeriksaan rutin (P2H) sebelum kendaraan dioperasikan</li>
+                        <li>Tidak merokok pada tempat â€“ tempat yang terdapat rambu larangan merokok serta tidak membuang puntung rokok sebelum mematikan apinya.</li>
+                        <li>Mematikan mesin kendaraan ketika mengisi bahan bakar / fuel.</li>
+                        <li>Memasang parking brake ketika memarkirkan kendaraan walaupun hanya sebentar.</li>
+                    </ol>
+                    <p class="info-footer">
+                        Semua peraturan dan kebijakan perusahaan tidak akan menjamin keselamatan jika kita sendiri tidak berusaha dan menjaga keselamatan. Ingat keluarga menanti kedatangan kita dengan selamat tanpa cedera sedikitpun.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- P2K3 BMA Section -->
+    <section id="p2k3-bma" class="p2k3-section">
+        <div class="container">
+            <h2 class="section-title">MEETING P2K3</h2>
+            <div class="crud-toolbar">
+                <button class="btn btn-secondary" id="p2k3UploadBtn" type="button">
+                    <i class="fas fa-file-upload"></i> Upload File P2K3
+                </button>
+                <input type="file" id="p2k3UploadInput" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv" hidden>
+                <button class="btn btn-secondary" id="p2k3ClearBtn" type="button">
+                    <i class="fas fa-trash"></i> Hapus File
+                </button>
+                <span class="upload-file-name" id="p2k3FileName">Belum ada file dipilih</span>
+            </div>
+                <p class="upload-note">
+                Format file yang didukung: CSV, XLSX, PDF, DOCX.
+            </p>
+            <div class="pdf-viewer-container">
+                <div class="pdf-controls">
+                    <button class="btn-pdf" onclick="openPDFFullscreen()">
+                        <i class="fas fa-expand"></i> Buka Fullscreen
+                    </button>
+                </div>
+                <p class="empty-upload-text" id="p2k3EmptyState">Tidak ada file yang diupload.</p>
+                <iframe 
+                    id="pdfViewer" 
+                    src="about:blank" 
+                    frameborder="0" 
+                    allowfullscreen="true" 
+                    mozallowfullscreen="true" 
+                    webkitallowfullscreen="true">
+                </iframe>
+                <div class="uploaded-file-links" id="p2k3FileLinks"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Tambahkan Observasi Section -->
+    <section id="tambahkan-observasi" class="observasi-form-section">
+        <div class="container">
+            <h2 class="section-title" data-current-year-text="HSE - OBSERVASI">HSE - OBSERVASI 2026</h2>
+            <h3 class="section-subtitle">PT BHUMIADYA INDONESIA</h3>
+            <p class="form-note">* Indicates required question</p>
+            <div class="crud-toolbar">
+                <button class="btn btn-secondary" id="hseUploadBtn" type="button">
+                    <i class="fas fa-file-upload"></i> Upload Dokumen HSE
+                </button>
+                <input type="file" id="hseUploadInput" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv" multiple hidden>
+                <button class="btn btn-secondary" id="hseClearBtn" type="button">
+                    <i class="fas fa-trash"></i> Hapus Semua Dokumen
+                </button>
+                <span class="upload-file-name" id="p2k3FileName">Belum ada file dipilih</span>
+            </div>
+            <p class="upload-note">
+                Format file yang didukung: CSV, XLSX, PDF, DOCX.
+            </p>
+            <div class="uploaded-file-links" id="hseFileLinks"></div>
+        </div>
+    </section>
+
+    <!-- Safety Induction Section -->
+    <section id="safety-induction" class="safety-induction-section">
+        <div class="container">
+            <h2 class="section-title">SAFETY INDUCTION</h2>
+            <div class="induction-content">
+                <div class="video-container">
+                    <iframe 
+                        src="https://www.youtube.com/embed/Z14Q201Y2uk?si=zkyDeY7SIYucqm8-" 
+                        title="YouTube video player"
+                        frameborder="0" 
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                        referrerpolicy="strict-origin-when-cross-origin"
+                        allowfullscreen>
+                    </iframe>
+                </div>
+                <div class="induction-materials">
+                    <h3>Materi Safety Induction</h3>
+                    <ul class="material-list">
+                        <li>
+                            <i class="fas fa-file-pdf"></i>
+                            <a href="#">Panduan Keselamatan Kerja</a>
+                        </li>
+                        <li>
+                            <i class="fas fa-file-pdf"></i>
+                            <a href="#">Prosedur Darurat</a>
+                        </li>
+                        <li>
+                            <i class="fas fa-file-pdf"></i>
+                            <a href="#">Alat Pelindung Diri (APD)</a>
+                        </li>
+                        <li>
+                            <i class="fas fa-file-pdf"></i>
+                            <a href="#">P2K3 Guidelines</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Data Observasi Section -->
+    <section id="data-observasi" class="data-section">
+        <div class="container">
+            <h2 class="section-title">DATA OBSERVASI</h2>
+            <div class="crud-toolbar">
+                <button class="btn btn-primary" id="addObservasiBtn" type="button">
+                    <i class="fas fa-plus"></i> Tambah Observasi
+                </button>
+                <button class="btn btn-secondary" id="importObservasiBtn" type="button">
+                    <i class="fas fa-upload"></i> Import
+                </button>
+                <button class="btn btn-secondary" id="exportObservasiBtn" type="button">
+                    <i class="fas fa-file-csv"></i> Export CSV
+                </button>
+                <button class="btn btn-secondary" id="templateObservasiBtn" type="button">
+                    <i class="fas fa-download"></i> Template CSV
+                </button>
+                <input type="file" id="uploadObservasiFile" accept=".csv,.txt,.json,.xlsx,.xls" hidden>
+                <button class="btn btn-secondary" id="clearObservasiBtn" type="button">
+                    <i class="fas fa-trash"></i> Hapus
+                </button>
+                <span class="upload-file-name" id="uploadFileName">Belum ada file dipilih</span>
+            </div>
+            <p class="upload-note">
+                Format file yang didukung: CSV, TXT, JSON, XLS, XLSX. Header yang dikenali: no, tanggal, observasiBy, departemen, tipe, lokasi, status, deskripsiGambar, photoName, photo.
+            </p>
+            <div class="crud-form-card" id="observasiFormCard">
+                <h3 id="formTitle">Edit Observasi</h3>
+                <form id="observasiForm">
+                    <input type="hidden" id="editNo">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="formTanggal">Tanggal</label>
+                            <input type="date" id="formTanggal" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="formObservasiBy">Observasi By</label>
+                            <input type="text" id="formObservasiBy" placeholder="Nama observer" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="formDepartemen">Departemen</label>
+                            <input type="text" id="formDepartemen" placeholder="Nama departemen" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="formTipe">Tipe</label>
+                            <select id="formTipe" required>
+                                <option value="Improvement">Improvement</option>
+                                <option value="Perilaku Positif - Perilaku">Perilaku Positif - Perilaku</option>
+                                <option value="Hazard Report">Hazard Report</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="formLokasi">Lokasi</label>
+                            <input type="text" id="formLokasi" placeholder="Lokasi observasi" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="formStatus">Status</label>
+                            <select id="formStatus" required>
+                                <option value="Pending">Pending</option>
+                                <option value="In Progress">In Progress</option>
+                                <option value="Done">Done</option>
+                            </select>
+                        </div>
+                        <div class="form-group form-group-full">
+                            <label for="formPhotoInput">Foto Observasi</label>
+                            <input type="file" id="formPhotoInput" accept="image/*">
+                            <p class="form-help-text">Maksimal 5 MB. Foto akan dikompresi otomatis.</p>
+                            <div class="photo-upload-preview" id="formPhotoPreviewWrap">
+                                <img id="formPhotoPreview" src="" alt="Preview foto observasi">
+                                <div class="photo-preview-info">
+                                    <span id="formPhotoFileName">Belum ada foto dipilih</span>
+                                    <button type="button" class="btn-table btn-delete" id="clearPhotoBtn">Hapus Foto</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group form-group-full">
+                            <label for="formPhotoDescription">Deskripsi Gambar</label>
+                            <textarea id="formPhotoDescription" rows="3" placeholder="Contoh: Kondisi jalur evakuasi terhalang material."></textarea>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary" id="saveObservasiBtn">Simpan</button>
+                        <button type="button" class="btn btn-secondary" id="cancelObservasiBtn">Batal</button>
+                    </div>
+                </form>
+            </div>
+            <div class="data-filters">
+                <input type="text" id="searchInput" placeholder="Cari observasi..." class="search-input">
+                <select id="filterType" class="filter-select">
+                    <option value="">Semua Tipe</option>
+                    <option value="improvement">Improvement</option>
+                    <option value="positif">Perilaku Positif</option>
+                    <option value="hazard">Hazard Report</option>
+                </select>
+            </div>
+            <div class="table-responsive">
+                <table class="data-table" id="observasiTable">
+                    <thead>
+                        <tr>
+                            <th>No</th>
+                            <th>Tanggal</th>
+                            <th>Observasi By</th>
+                            <th>Departemen</th>
+                            <th>Tipe</th>
+                            <th>Lokasi</th>
+                            <th>Foto</th>
+                            <th>Deskripsi Gambar</th>
+                            <th>Status</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="observasiTableBody">
+                        <!-- Data akan diisi oleh JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- Observasi Report Section -->
+    <section id="observasi-report" class="report-section">
+        <div class="container">
+            <h2 class="section-title">OBSERVASI REPORT</h2>
+            <div class="crud-toolbar">
+                <button class="btn btn-secondary" id="reportImportBtn" type="button">
+                    <i class="fas fa-upload"></i> Import
+                </button>
+                <button class="btn btn-secondary" id="reportExportBtn" type="button">
+                    <i class="fas fa-file-csv"></i> Export CSV
+                </button>
+                <button class="btn btn-secondary" id="reportTemplateBtn" type="button">
+                    <i class="fas fa-download"></i> Template CSV
+                </button>
+                <input type="file" id="reportUploadFile" accept=".csv,.xlsx,.xls" hidden>
+                <span class="upload-file-name" id="reportUploadName">Belum ada file report dipilih</span>
+            </div>
+            <p class="upload-note">
+                Format file yang didukung: CSV, XLSX. Gunakan tombol Template CSV sebagai contoh format.
+            </p>
+            <div class="charts-container">
+                <div class="chart-card">
+                    <h3>Jumlah Type Observasi</h3>
+                    <canvas id="typeChart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>Jumlah Departemen</h3>
+                    <canvas id="deptChart"></canvas>
+                </div>
+            </div>
+            <div class="report-tables">
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th colspan="3">Rekap Tipe Observasi</th>
+                            </tr>
+                            <tr>
+                                <th>No</th>
+                                <th>Tipe</th>
+                                <th>Jumlah</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reportTypeTableBody"></tbody>
+                    </table>
+                </div>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th colspan="3">Rekap Departemen</th>
+                            </tr>
+                            <tr>
+                                <th>No</th>
+                                <th>Departemen</th>
+                                <th>Jumlah</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reportDeptTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Observasi Progress Section -->
+    <section id="observasi-progress" class="progress-section">
+        <div class="container">
+            <h2 class="section-title">OBSERVASI PROGRESS</h2>
+            <div class="crud-toolbar">
+                <button class="btn btn-secondary" id="progressImportBtn" type="button">
+                    <i class="fas fa-upload"></i> Import
+                </button>
+                <button class="btn btn-secondary" id="progressExportBtn" type="button">
+                    <i class="fas fa-file-csv"></i> Export CSV
+                </button>
+                <button class="btn btn-secondary" id="progressTemplateBtn" type="button">
+                    <i class="fas fa-download"></i> Template CSV
+                </button>
+                <input type="file" id="progressUploadFile" accept=".csv,.xlsx,.xls" hidden>
+                <button class="btn btn-secondary" id="progressDeleteAllBtn" type="button">
+                    <i class="fas fa-trash"></i> Hapus
+                </button>
+                <span class="upload-file-name" id="progressUploadName">Belum ada file progress dipilih</span>
+            </div>
+            <p class="upload-note">
+                Format file yang didukung: CSV, XLSX. Gunakan tombol Template CSV sebagai contoh format.
+            </p>
+            <div class="progress-info">
+                Progress mengambil data dari CRUD/import di menu Data Observasi. Ubah status langsung di tabel berikut.
+            </div>
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>No</th>
+                            <th>Tanggal</th>
+                            <th>Observasi By</th>
+                            <th>Departemen</th>
+                            <th>Tipe</th>
+                            <th>Lokasi</th>
+                            <th>Foto</th>
+                            <th>Deskripsi Gambar</th>
+                            <th>Status</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="progressTableBody">
+                        <!-- Progress data dari JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p data-current-year-html="&copy; HSE | PT BHUMIADYA INDONESIA |">&copy; HSE | PT BHUMIADYA INDONESIA | 2026</p>
+            <div class="footer-links">
+                <a href="#"><i class="fab fa-facebook"></i></a>
+                <a href="#"><i class="fab fa-instagram"></i></a>
+                <a href="#"><i class="fab fa-linkedin"></i></a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
