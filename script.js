@@ -49,6 +49,7 @@ const p2k3EmptyState = document.getElementById('p2k3EmptyState');
 const hseUploadBtn = document.getElementById('hseUploadBtn');
 const hseUploadInput = document.getElementById('hseUploadInput');
 const hseClearBtn = document.getElementById('hseClearBtn');
+const hseFileName = document.getElementById('hseFileName');
 const hseFileLinks = document.getElementById('hseFileLinks');
 const hseEmptyState = document.getElementById('hseEmptyState');
 
@@ -78,7 +79,12 @@ let deptChartInstance = null;
 
 // Data Store
 const STORAGE_KEY = 'sams_observasi_data_v2';
+const STORAGE_KEY_P2K3 = 'sams_p2k3_upload_v1';
+const STORAGE_KEY_HSE = 'sams_hse_uploads_v1';
 const SUPABASE_TABLE = window.SAMS_SUPABASE_TABLE || 'observasi_records';
+const SUPABASE_P2K3_TABLE = window.SAMS_SUPABASE_P2K3_TABLE || 'meeting_p2k3_files';
+const SUPABASE_HSE_TABLE = window.SAMS_SUPABASE_HSE_TABLE || 'hse_observasi_files_2026';
+const SUPABASE_DOC_BUCKET = window.SAMS_SUPABASE_DOC_BUCKET || 'sams-documents';
 const SUPABASE_URL = window.SAMS_SUPABASE_URL || '';
 const SUPABASE_ANON_KEY = window.SAMS_SUPABASE_ANON_KEY || '';
 let supabaseClient = null;
@@ -91,7 +97,9 @@ const state = {
     filtered: []
 };
 const p2k3State = {
+    id: '',
     fileUrl: '',
+    storagePath: '',
     fileName: '',
     defaultViewerUrl: ''
 };
@@ -249,12 +257,231 @@ function loadLocalCache() {
     }
 }
 
+function saveP2k3LocalCache(item) {
+    try {
+        localStorage.setItem(STORAGE_KEY_P2K3, JSON.stringify(item || null));
+    } catch {
+        showNotification('Gagal menyimpan cache P2K3 di browser.', 'error');
+    }
+}
+
+function loadP2k3LocalCache() {
+    const raw = localStorage.getItem(STORAGE_KEY_P2K3);
+    if (!raw) return null;
+    try {
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== 'object') return null;
+        const fileUrl = String(parsed.fileUrl || '');
+        if (fileUrl.startsWith('blob:')) return null;
+        return {
+            id: String(parsed.id || ''),
+            fileName: String(parsed.fileName || ''),
+            fileUrl,
+            storagePath: String(parsed.storagePath || '')
+        };
+    } catch {
+        return null;
+    }
+}
+
+function saveHseLocalCache(items) {
+    try {
+        localStorage.setItem(STORAGE_KEY_HSE, JSON.stringify(Array.isArray(items) ? items : []));
+    } catch {
+        showNotification('Gagal menyimpan cache HSE di browser.', 'error');
+    }
+}
+
+function loadHseLocalCache() {
+    const raw = localStorage.getItem(STORAGE_KEY_HSE);
+    if (!raw) return [];
+    try {
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) return [];
+        return parsed.map((item) => ({
+            id: String(item.id || ''),
+            name: String(item.name || ''),
+            url: String(item.url || ''),
+            storagePath: String(item.storagePath || '')
+        })).filter((item) => item.name && item.url && !item.url.startsWith('blob:'));
+    } catch {
+        return [];
+    }
+}
+
+function sanitizeFileName(fileName) {
+    return String(fileName || 'file')
+        .trim()
+        .replace(/[^a-zA-Z0-9._-]/g, '_');
+}
+
+function splitStoragePathFromPublicUrl(publicUrl) {
+    const marker = `/object/public/${SUPABASE_DOC_BUCKET}/`;
+    const idx = String(publicUrl || '').indexOf(marker);
+    if (idx < 0) return '';
+    return decodeURIComponent(publicUrl.slice(idx + marker.length));
+}
+
 function initSupabase() {
     if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return;
     if (!window.supabase || typeof window.supabase.createClient !== 'function') return;
 
     supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     useSupabase = true;
+}
+
+async function uploadDocumentToSupabase(file, folder) {
+    if (!useSupabase || !supabaseClient) {
+        throw new Error('Supabase belum aktif.');
+    }
+
+    const safeName = sanitizeFileName(file.name);
+    const path = `${folder}/${Date.now()}_${Math.random().toString(16).slice(2)}_${safeName}`;
+    const uploadResult = await supabaseClient.storage
+        .from(SUPABASE_DOC_BUCKET)
+        .upload(path, file, { upsert: false });
+    if (uploadResult.error) throw uploadResult.error;
+
+    const { data } = supabaseClient.storage.from(SUPABASE_DOC_BUCKET).getPublicUrl(path);
+    return {
+        path,
+        publicUrl: data && data.publicUrl ? data.publicUrl : ''
+    };
+}
+
+async function deleteDocumentFromSupabase(storagePath) {
+    if (!storagePath || !useSupabase || !supabaseClient) return;
+    const removeResult = await supabaseClient.storage.from(SUPABASE_DOC_BUCKET).remove([storagePath]);
+    if (removeResult.error) throw removeResult.error;
+}
+
+async function loadP2k3FileFromSupabase() {
+    if (!useSupabase || !supabaseClient) return null;
+
+    const result = await supabaseClient
+        .from(SUPABASE_P2K3_TABLE)
+        .select('id, file_name, public_url, storage_path')
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+    if (result.error) throw result.error;
+    const row = Array.isArray(result.data) ? result.data[0] : null;
+    if (!row) return null;
+
+    const fileUrl = String(row.public_url || '').trim();
+    return {
+        id: String(row.id || ''),
+        fileName: String(row.file_name || '').trim(),
+        fileUrl,
+        storagePath: String(row.storage_path || '').trim() || splitStoragePathFromPublicUrl(fileUrl)
+    };
+}
+
+async function clearP2k3SupabaseData() {
+    if (!useSupabase || !supabaseClient) return;
+
+    const result = await supabaseClient
+        .from(SUPABASE_P2K3_TABLE)
+        .select('id, storage_path, public_url');
+    if (result.error) throw result.error;
+
+    const rows = Array.isArray(result.data) ? result.data : [];
+    const storagePaths = rows
+        .map((row) => String(row.storage_path || '').trim() || splitStoragePathFromPublicUrl(row.public_url))
+        .filter(Boolean);
+
+    if (storagePaths.length) {
+        const removeResult = await supabaseClient.storage.from(SUPABASE_DOC_BUCKET).remove(storagePaths);
+        if (removeResult.error) throw removeResult.error;
+    }
+
+    const ids = rows.map((row) => String(row.id || '')).filter(Boolean);
+    if (ids.length) {
+        const deleteResult = await supabaseClient.from(SUPABASE_P2K3_TABLE).delete().in('id', ids);
+        if (deleteResult.error) throw deleteResult.error;
+    }
+}
+
+async function insertP2k3SupabaseRow(fileMeta) {
+    if (!useSupabase || !supabaseClient) return;
+    const row = {
+        file_name: fileMeta.fileName,
+        public_url: fileMeta.fileUrl,
+        storage_path: fileMeta.storagePath,
+        mime_type: fileMeta.mimeType || '',
+        file_size: Number(fileMeta.fileSize || 0)
+    };
+    const insertResult = await supabaseClient.from(SUPABASE_P2K3_TABLE).insert(row).select('id').single();
+    if (insertResult.error) throw insertResult.error;
+    return String(insertResult.data.id || '');
+}
+
+async function loadHseFilesFromSupabase() {
+    if (!useSupabase || !supabaseClient) return [];
+
+    const result = await supabaseClient
+        .from(SUPABASE_HSE_TABLE)
+        .select('id, file_name, public_url, storage_path')
+        .order('created_at', { ascending: false });
+    if (result.error) throw result.error;
+
+    return (Array.isArray(result.data) ? result.data : []).map((row) => {
+        const url = String(row.public_url || '').trim();
+        return {
+            id: String(row.id || ''),
+            name: String(row.file_name || '').trim(),
+            url,
+            storagePath: String(row.storage_path || '').trim() || splitStoragePathFromPublicUrl(url)
+        };
+    }).filter((item) => item.name && item.url);
+}
+
+async function insertHseSupabaseRows(items) {
+    if (!useSupabase || !supabaseClient || !items.length) return [];
+    const rows = items.map((item) => ({
+        file_name: item.name,
+        public_url: item.url,
+        storage_path: item.storagePath,
+        mime_type: item.mimeType || '',
+        file_size: Number(item.fileSize || 0)
+    }));
+    const result = await supabaseClient.from(SUPABASE_HSE_TABLE).insert(rows).select('id, storage_path, public_url');
+    if (result.error) throw result.error;
+    return Array.isArray(result.data) ? result.data : [];
+}
+
+async function deleteHseSupabaseRow(fileItem) {
+    if (!useSupabase || !supabaseClient || !fileItem || !fileItem.id) return;
+
+    const deleteResult = await supabaseClient.from(SUPABASE_HSE_TABLE).delete().eq('id', fileItem.id);
+    if (deleteResult.error) throw deleteResult.error;
+
+    const path = String(fileItem.storagePath || '').trim() || splitStoragePathFromPublicUrl(fileItem.url);
+    if (path) {
+        await deleteDocumentFromSupabase(path);
+    }
+}
+
+async function clearHseSupabaseData() {
+    if (!useSupabase || !supabaseClient) return;
+    const result = await supabaseClient.from(SUPABASE_HSE_TABLE).select('id, storage_path, public_url');
+    if (result.error) throw result.error;
+
+    const rows = Array.isArray(result.data) ? result.data : [];
+    const storagePaths = rows
+        .map((row) => String(row.storage_path || '').trim() || splitStoragePathFromPublicUrl(row.public_url))
+        .filter(Boolean);
+
+    if (storagePaths.length) {
+        const removeResult = await supabaseClient.storage.from(SUPABASE_DOC_BUCKET).remove(storagePaths);
+        if (removeResult.error) throw removeResult.error;
+    }
+
+    const ids = rows.map((row) => String(row.id || '')).filter(Boolean);
+    if (ids.length) {
+        const deleteResult = await supabaseClient.from(SUPABASE_HSE_TABLE).delete().in('id', ids);
+        if (deleteResult.error) throw deleteResult.error;
+    }
 }
 
 function toDbRow(item) {
@@ -660,75 +887,227 @@ function updateP2k3Viewer(url, fileName) {
     }
 }
 
-function clearP2k3Upload() {
-    revokeObjectUrl(p2k3State.fileUrl);
-    p2k3State.fileUrl = '';
-    p2k3State.fileName = '';
+function setP2k3State(item) {
+    const fileUrl = item && item.fileUrl ? String(item.fileUrl) : '';
+    const fileName = item && item.fileName ? String(item.fileName) : '';
+    const prevUrl = p2k3State.fileUrl;
+    if (prevUrl && prevUrl.startsWith('blob:') && prevUrl !== fileUrl) {
+        revokeObjectUrl(prevUrl);
+    }
+    p2k3State.id = item && item.id ? String(item.id) : '';
+    p2k3State.fileUrl = fileUrl;
+    p2k3State.fileName = fileName;
+    p2k3State.storagePath = item && item.storagePath ? String(item.storagePath) : '';
 
-    if (p2k3FileName) p2k3FileName.textContent = 'Belum ada file dipilih';
-    updateP2k3Viewer('', '');
-    renderUploadedLinks(p2k3FileLinks, [], () => {});
+    if (p2k3FileName) {
+        p2k3FileName.textContent = fileName || 'Belum ada file dipilih';
+    }
+    updateP2k3Viewer(fileUrl, fileName);
+    if (fileName && fileUrl) {
+        renderUploadedLinks(p2k3FileLinks, [{ name: fileName, url: fileUrl }], () => {
+            clearP2k3Upload();
+        });
+    } else {
+        renderUploadedLinks(p2k3FileLinks, [], () => {});
+    }
 }
 
-function handleP2k3Upload() {
+async function clearP2k3Upload() {
+    try {
+        if (useSupabase) {
+            await clearP2k3SupabaseData();
+        }
+    } catch (error) {
+        logSupabaseError('clearP2k3Upload', error, { table: SUPABASE_P2K3_TABLE, bucket: SUPABASE_DOC_BUCKET });
+        showNotification('Gagal hapus dokumen P2K3 dari database.', 'error');
+        return;
+    }
+
+    revokeObjectUrl(p2k3State.fileUrl);
+    setP2k3State(null);
+    saveP2k3LocalCache(null);
+    showNotification('Dokumen P2K3 berhasil dihapus.', 'success');
+}
+
+async function handleP2k3Upload() {
     if (!p2k3UploadInput) return;
     p2k3UploadInput.onchange = null;
-    p2k3UploadInput.onchange = () => {
+    p2k3UploadInput.onchange = async () => {
         const file = p2k3UploadInput.files && p2k3UploadInput.files[0];
         if (!file) return;
 
-        revokeObjectUrl(p2k3State.fileUrl);
-        const url = URL.createObjectURL(file);
-        p2k3State.fileUrl = url;
-        p2k3State.fileName = file.name;
+        try {
+            if (useSupabase) {
+                await clearP2k3SupabaseData();
+                const uploaded = await uploadDocumentToSupabase(file, 'p2k3');
+                const p2k3Id = await insertP2k3SupabaseRow({
+                    fileName: file.name,
+                    fileUrl: uploaded.publicUrl,
+                    storagePath: uploaded.path,
+                    mimeType: file.type,
+                    fileSize: file.size
+                });
 
-        if (p2k3FileName) p2k3FileName.textContent = file.name;
-        updateP2k3Viewer(url, file.name);
-        renderUploadedLinks(
-            p2k3FileLinks,
-            [{ name: file.name, url }],
-            () => clearP2k3Upload()
-        );
+                setP2k3State({
+                    id: p2k3Id,
+                    fileName: file.name,
+                    fileUrl: uploaded.publicUrl,
+                    storagePath: uploaded.path
+                });
+            } else {
+                revokeObjectUrl(p2k3State.fileUrl);
+                const localUrl = URL.createObjectURL(file);
+                setP2k3State({ fileName: file.name, fileUrl: localUrl, storagePath: '' });
+            }
+
+            saveP2k3LocalCache({
+                id: p2k3State.id,
+                fileName: p2k3State.fileName,
+                fileUrl: p2k3State.fileUrl,
+                storagePath: p2k3State.storagePath
+            });
+            showNotification('Dokumen P2K3 berhasil diupload.', 'success');
+        } catch (error) {
+            logSupabaseError('handleP2k3Upload', error, { table: SUPABASE_P2K3_TABLE, bucket: SUPABASE_DOC_BUCKET });
+            showNotification('Upload dokumen P2K3 gagal. Cek konfigurasi Supabase.', 'error');
+        }
     };
 
     p2k3UploadInput.value = '';
     p2k3UploadInput.click();
 }
 
-function handleHseUpload() {
+async function handleHseUpload() {
     if (!hseUploadInput) return;
     hseUploadInput.onchange = null;
-    hseUploadInput.onchange = () => {
+    hseUploadInput.onchange = async () => {
         const files = Array.from(hseUploadInput.files || []);
         if (!files.length) return;
 
-        files.forEach((file) => {
-            hseFiles.push({ name: file.name, url: URL.createObjectURL(file) });
-        });
+        try {
+            if (useSupabase) {
+                const uploadedItems = [];
+                for (const file of files) {
+                    const uploaded = await uploadDocumentToSupabase(file, 'hse-observasi');
+                    uploadedItems.push({
+                        name: file.name,
+                        url: uploaded.publicUrl,
+                        storagePath: uploaded.path,
+                        mimeType: file.type,
+                        fileSize: file.size
+                    });
+                }
 
-        renderHseFileLinks();
+                const insertedRows = await insertHseSupabaseRows(uploadedItems);
+                insertedRows.forEach((row, idx) => {
+                    const fallback = uploadedItems[idx];
+                    hseFiles.unshift({
+                        id: String(row.id || ''),
+                        name: fallback.name,
+                        url: fallback.url,
+                        storagePath: String(row.storage_path || fallback.storagePath || '')
+                    });
+                });
+            } else {
+                files.forEach((file) => {
+                    hseFiles.unshift({ id: '', name: file.name, url: URL.createObjectURL(file), storagePath: '' });
+                });
+            }
+
+            saveHseLocalCache(hseFiles);
+            renderHseFileLinks();
+            showNotification('Dokumen HSE berhasil diupload.', 'success');
+        } catch (error) {
+            logSupabaseError('handleHseUpload', error, { table: SUPABASE_HSE_TABLE, bucket: SUPABASE_DOC_BUCKET });
+            showNotification('Upload dokumen HSE gagal. Cek konfigurasi Supabase.', 'error');
+        }
     };
 
     hseUploadInput.value = '';
     hseUploadInput.click();
 }
 
-function removeHseUploadByIndex(index) {
+async function removeHseUploadByIndex(index) {
     const removed = hseFiles.splice(index, 1)[0];
-    if (removed) revokeObjectUrl(removed.url);
+    if (!removed) return;
+
+    try {
+        if (useSupabase && removed.id) {
+            await deleteHseSupabaseRow(removed);
+        } else {
+            revokeObjectUrl(removed.url);
+        }
+    } catch (error) {
+        hseFiles.splice(index, 0, removed);
+        logSupabaseError('removeHseUploadByIndex', error, { table: SUPABASE_HSE_TABLE, fileId: removed.id });
+        showNotification('Gagal hapus dokumen HSE dari database.', 'error');
+        renderHseFileLinks();
+        return;
+    }
+
+    saveHseLocalCache(hseFiles);
     renderHseFileLinks();
+    showNotification('Dokumen HSE berhasil dihapus.', 'success');
 }
 
 function renderHseFileLinks() {
     renderUploadedLinks(hseFileLinks, hseFiles, removeHseUploadByIndex);
+    if (hseFileName) {
+        hseFileName.textContent = hseFiles.length ? `${hseFiles.length} dokumen terunggah` : 'Belum ada file dipilih';
+    }
     if (hseEmptyState) {
         hseEmptyState.style.display = hseFiles.length ? 'none' : 'block';
     }
 }
 
-function clearHseUploads() {
-    hseFiles.forEach((item) => revokeObjectUrl(item.url));
+async function clearHseUploads() {
+    try {
+        if (useSupabase) {
+            await clearHseSupabaseData();
+        } else {
+            hseFiles.forEach((item) => revokeObjectUrl(item.url));
+        }
+    } catch (error) {
+        logSupabaseError('clearHseUploads', error, { table: SUPABASE_HSE_TABLE, bucket: SUPABASE_DOC_BUCKET });
+        showNotification('Gagal hapus semua dokumen HSE.', 'error');
+        return;
+    }
+
     hseFiles.length = 0;
+    saveHseLocalCache([]);
+    renderHseFileLinks();
+    showNotification('Semua dokumen HSE berhasil dihapus.', 'success');
+}
+
+async function loadSupportingDocumentData() {
+    if (useSupabase) {
+        try {
+            const [p2k3Doc, hseDocs] = await Promise.all([
+                loadP2k3FileFromSupabase(),
+                loadHseFilesFromSupabase()
+            ]);
+
+            setP2k3State(p2k3Doc);
+            hseFiles.length = 0;
+            hseDocs.forEach((item) => hseFiles.push(item));
+            renderHseFileLinks();
+
+            saveP2k3LocalCache(p2k3Doc);
+            saveHseLocalCache(hseDocs);
+            return;
+        } catch (error) {
+            logSupabaseError('loadSupportingDocumentData', error, {
+                p2k3Table: SUPABASE_P2K3_TABLE,
+                hseTable: SUPABASE_HSE_TABLE,
+                bucket: SUPABASE_DOC_BUCKET
+            });
+        }
+    }
+
+    const cachedP2k3 = loadP2k3LocalCache();
+    setP2k3State(cachedP2k3);
+    hseFiles.length = 0;
+    loadHseLocalCache().forEach((item) => hseFiles.push(item));
     renderHseFileLinks();
 }
 
@@ -1875,9 +2254,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     initRotatingImages();
     renderFormPhotoPreview();
     initP2k3DefaultViewer();
-    clearP2k3Upload();
-    renderHseFileLinks();
     await loadInitialData();
+    await loadSupportingDocumentData();
     renderAllObservasiViews();
 
     if (useSupabase) {

@@ -61,6 +61,10 @@ Sisipkan sebelum `script.js`:
 <script>
   window.SAMS_SUPABASE_URL = "https://YOUR_PROJECT.supabase.co";
   window.SAMS_SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
+  window.SAMS_SUPABASE_TABLE = "observasi_records";
+  window.SAMS_SUPABASE_P2K3_TABLE = "meeting_p2k3_files";
+  window.SAMS_SUPABASE_HSE_TABLE = "hse_observasi_files_2026";
+  window.SAMS_SUPABASE_DOC_BUCKET = "sams-documents";
 </script>
 ```
 
@@ -107,6 +111,44 @@ add column if not exists photo_name text,
 add column if not exists photo_description text;
 ```
 
+### 3b) Tabel dokumen menu MEETING P2K3
+
+```sql
+create extension if not exists pgcrypto;
+
+create table if not exists public.meeting_p2k3_files (
+  id uuid primary key default gen_random_uuid(),
+  file_name text not null,
+  public_url text not null,
+  storage_path text not null,
+  mime_type text,
+  file_size bigint default 0,
+  created_at timestamptz default now()
+);
+```
+
+### 3c) Tabel dokumen menu HSE - OBSERVASI 2026
+
+```sql
+create table if not exists public.hse_observasi_files_2026 (
+  id uuid primary key default gen_random_uuid(),
+  file_name text not null,
+  public_url text not null,
+  storage_path text not null,
+  mime_type text,
+  file_size bigint default 0,
+  created_at timestamptz default now()
+);
+```
+
+### 3d) Storage bucket dokumen
+
+```sql
+insert into storage.buckets (id, name, public)
+values ('sams-documents', 'sams-documents', true)
+on conflict (id) do nothing;
+```
+
 ### 4) RLS Policy
 Aktifkan RLS + policy berikut agar frontend (anon key) bisa CRUD:
 
@@ -138,6 +180,59 @@ create policy anon_delete
 on public.observasi_records for delete
 to anon
 using (true);
+```
+
+Aktifkan RLS + policy tabel dokumen:
+
+```sql
+alter table public.meeting_p2k3_files enable row level security;
+alter table public.hse_observasi_files_2026 enable row level security;
+
+drop policy if exists p2k3_anon_all on public.meeting_p2k3_files;
+create policy p2k3_anon_all
+on public.meeting_p2k3_files
+for all
+to anon
+using (true)
+with check (true);
+
+drop policy if exists hse_anon_all on public.hse_observasi_files_2026;
+create policy hse_anon_all
+on public.hse_observasi_files_2026
+for all
+to anon
+using (true)
+with check (true);
+```
+
+Policy Storage bucket agar anon bisa upload/read/delete:
+
+```sql
+drop policy if exists storage_anon_docs_select on storage.objects;
+drop policy if exists storage_anon_docs_insert on storage.objects;
+drop policy if exists storage_anon_docs_update on storage.objects;
+drop policy if exists storage_anon_docs_delete on storage.objects;
+
+create policy storage_anon_docs_select
+on storage.objects for select
+to anon
+using (bucket_id = 'sams-documents');
+
+create policy storage_anon_docs_insert
+on storage.objects for insert
+to anon
+with check (bucket_id = 'sams-documents');
+
+create policy storage_anon_docs_update
+on storage.objects for update
+to anon
+using (bucket_id = 'sams-documents')
+with check (bucket_id = 'sams-documents');
+
+create policy storage_anon_docs_delete
+on storage.objects for delete
+to anon
+using (bucket_id = 'sams-documents');
 ```
 
 ## Menjalankan Lokal
