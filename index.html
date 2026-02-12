@@ -204,19 +204,11 @@
                     <ul class="material-list">
                         <li>
                             <i class="fas fa-file-pdf"></i>
-                            <a href="#">Panduan Keselamatan Kerja</a>
+                            <a href="assets/Safety%20Induction%20Karyawan%20Baru.pdf" target="_blank" rel="noopener noreferrer">Safety Induction Karyawan Baru</a>
                         </li>
                         <li>
                             <i class="fas fa-file-pdf"></i>
-                            <a href="#">Prosedur Darurat</a>
-                        </li>
-                        <li>
-                            <i class="fas fa-file-pdf"></i>
-                            <a href="#">Alat Pelindung Diri (APD)</a>
-                        </li>
-                        <li>
-                            <i class="fas fa-file-pdf"></i>
-                            <a href="#">P2K3 Guidelines</a>
+                            <a href="assets/Safety%20Induction%20Visitor.pdf" target="_blank" rel="noopener noreferrer">Safety Induction Visitor</a>
                         </li>
                     </ul>
                 </div>
@@ -340,6 +332,13 @@
                     </tbody>
                 </table>
             </div>
+            <div class="table-pagination">
+                <span class="pagination-info" id="observasiPaginationInfo">Halaman 1 dari 1</span>
+                <div class="pagination-actions">
+                    <button type="button" class="btn btn-secondary btn-pagination" id="observasiPaginationPrev">Sebelumnya</button>
+                    <button type="button" class="btn btn-secondary btn-pagination" id="observasiPaginationNext">Berikutnya</button>
+                </div>
+            </div>
         </div>
     </section>
 
@@ -374,35 +373,53 @@
                 </div>
             </div>
             <div class="report-tables">
-                <div class="table-responsive">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th colspan="3">Rekap Tipe Observasi</th>
-                            </tr>
-                            <tr>
-                                <th>No</th>
-                                <th>Tipe</th>
-                                <th>Jumlah</th>
-                            </tr>
-                        </thead>
-                        <tbody id="reportTypeTableBody"></tbody>
-                    </table>
+                <div class="report-table-block">
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th colspan="3">Rekap Tipe Observasi</th>
+                                </tr>
+                                <tr>
+                                    <th>No</th>
+                                    <th>Tipe</th>
+                                    <th>Jumlah</th>
+                                </tr>
+                            </thead>
+                            <tbody id="reportTypeTableBody"></tbody>
+                        </table>
+                    </div>
+                    <div class="table-pagination table-pagination-compact">
+                        <span class="pagination-info" id="reportTypePaginationInfo">Halaman 1 dari 1</span>
+                        <div class="pagination-actions">
+                            <button type="button" class="btn btn-secondary btn-pagination" id="reportTypePaginationPrev">Sebelumnya</button>
+                            <button type="button" class="btn btn-secondary btn-pagination" id="reportTypePaginationNext">Berikutnya</button>
+                        </div>
+                    </div>
                 </div>
-                <div class="table-responsive">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th colspan="3">Rekap Departemen</th>
-                            </tr>
-                            <tr>
-                                <th>No</th>
-                                <th>Departemen</th>
-                                <th>Jumlah</th>
-                            </tr>
-                        </thead>
-                        <tbody id="reportDeptTableBody"></tbody>
-                    </table>
+                <div class="report-table-block">
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th colspan="3">Rekap Departemen</th>
+                                </tr>
+                                <tr>
+                                    <th>No</th>
+                                    <th>Departemen</th>
+                                    <th>Jumlah</th>
+                                </tr>
+                            </thead>
+                            <tbody id="reportDeptTableBody"></tbody>
+                        </table>
+                    </div>
+                    <div class="table-pagination table-pagination-compact">
+                        <span class="pagination-info" id="reportDeptPaginationInfo">Halaman 1 dari 1</span>
+                        <div class="pagination-actions">
+                            <button type="button" class="btn btn-secondary btn-pagination" id="reportDeptPaginationPrev">Sebelumnya</button>
+                            <button type="button" class="btn btn-secondary btn-pagination" id="reportDeptPaginationNext">Berikutnya</button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -454,6 +471,13 @@
                         <!-- Progress data dari JavaScript -->
                     </tbody>
                 </table>
+            </div>
+            <div class="table-pagination">
+                <span class="pagination-info" id="progressPaginationInfo">Halaman 1 dari 1</span>
+                <div class="pagination-actions">
+                    <button type="button" class="btn btn-secondary btn-pagination" id="progressPaginationPrev">Sebelumnya</button>
+                    <button type="button" class="btn btn-secondary btn-pagination" id="progressPaginationNext">Berikutnya</button>
+                </div>
             </div>
         </div>
     </section>

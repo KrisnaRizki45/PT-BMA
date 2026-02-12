@@ -72,6 +72,18 @@ const observasiTableBody = document.getElementById('observasiTableBody');
 const progressTableBody = document.getElementById('progressTableBody');
 const reportTypeTableBody = document.getElementById('reportTypeTableBody');
 const reportDeptTableBody = document.getElementById('reportDeptTableBody');
+const observasiPaginationInfo = document.getElementById('observasiPaginationInfo');
+const observasiPaginationPrev = document.getElementById('observasiPaginationPrev');
+const observasiPaginationNext = document.getElementById('observasiPaginationNext');
+const progressPaginationInfo = document.getElementById('progressPaginationInfo');
+const progressPaginationPrev = document.getElementById('progressPaginationPrev');
+const progressPaginationNext = document.getElementById('progressPaginationNext');
+const reportTypePaginationInfo = document.getElementById('reportTypePaginationInfo');
+const reportTypePaginationPrev = document.getElementById('reportTypePaginationPrev');
+const reportTypePaginationNext = document.getElementById('reportTypePaginationNext');
+const reportDeptPaginationInfo = document.getElementById('reportDeptPaginationInfo');
+const reportDeptPaginationPrev = document.getElementById('reportDeptPaginationPrev');
+const reportDeptPaginationNext = document.getElementById('reportDeptPaginationNext');
 
 // Charts
 let typeChartInstance = null;
@@ -95,6 +107,21 @@ let localCacheWarned = false;
 const state = {
     records: [],
     filtered: []
+};
+const PAGE_SIZE = {
+    observasi: 10,
+    progress: 10,
+    report: 10
+};
+const paginationState = {
+    observasi: 1,
+    progress: 1,
+    reportType: 1,
+    reportDept: 1
+};
+const reportSummaryState = {
+    typeCounts: {},
+    deptCounts: {}
 };
 const p2k3State = {
     id: '',
@@ -752,8 +779,35 @@ function parseSpreadsheetToObservasi(fileContent, isBinary) {
     const firstSheet = workbook.Sheets[firstSheetName];
     const jsonRows = window.XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
     if (!jsonRows.length) return [];
+    const rowsAsArray = window.XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: '' });
+    if (!rowsAsArray.length) return [];
 
-    return jsonRows.map((row, idx) => normalizeObservasiItem(row, idx + 1));
+    const headers = Array.isArray(rowsAsArray[0]) ? rowsAsArray[0].map((value) => String(value || '')) : [];
+    const idx = getMappedHeaderIndex(headers);
+
+    return rowsAsArray.slice(1).map((cols, rowIndex) => {
+        const getValue = (key) => {
+            const pos = idx[key];
+            if (pos < 0) return '';
+            return String((Array.isArray(cols) ? cols[pos] : '') || '').trim();
+        };
+
+        return normalizeObservasiItem(
+            {
+                no: Number(getValue('no')) || rowIndex + 1,
+                tanggal: getValue('tanggal'),
+                observasiBy: getValue('observasiBy'),
+                departemen: getValue('departemen'),
+                tipe: getValue('tipe'),
+                lokasi: getValue('lokasi'),
+                photoDataUrl: getValue('photoDataUrl'),
+                photoName: getValue('photoName'),
+                photoDescription: getValue('photoDescription'),
+                status: getValue('status') || 'Pending'
+            },
+            rowIndex + 1
+        );
+    }).filter((item) => item.tanggal || item.observasiBy || item.departemen || item.tipe || item.lokasi);
 }
 
 function parseUploadedFile(file, fileContent, isBinary = false) {
@@ -822,6 +876,12 @@ async function importFromInput(inputElement, labelElement, acceptedHint) {
         reindexRecords();
         await syncBackend();
         hideFormCard();
+        if (searchInput) searchInput.value = '';
+        if (filterType) filterType.value = '';
+        paginationState.observasi = 1;
+        paginationState.progress = 1;
+        paginationState.reportType = 1;
+        paginationState.reportDept = 1;
         renderAllObservasiViews();
         showNotification(`Import berhasil (${state.records.length} data).`, 'success');
     } catch (error) {
@@ -1680,16 +1740,92 @@ function getStatusClass(status) {
     return 'status-pending';
 }
 
-function renderObservasiTable() {
-    if (!observasiTableBody) return;
-    observasiTableBody.innerHTML = '';
-
-    if (!state.filtered.length) {
-        observasiTableBody.innerHTML = '<tr><td colspan="10" class="empty-table">Belum ada data observasi.</td></tr>';
+async function showObservasiDetailModal(no) {
+    const item = state.records.find((row) => row.no === no);
+    if (!item) {
+        showNotification('Data observasi tidak ditemukan.', 'error');
         return;
     }
 
-    state.filtered.forEach((item) => {
+    const photoHtml = item.photoDataUrl
+        ? `<a href="${item.photoDataUrl}" target="_blank" rel="noopener noreferrer"><img src="${item.photoDataUrl}" alt="Foto observasi ${item.no}" style="max-width:100%;max-height:260px;border-radius:8px;display:block;margin:0 auto 10px;"></a>`
+        : '<div style="font-style:italic;color:#6c757d;">Tidak ada foto</div>';
+
+    const html = `
+        <div style="text-align:left;line-height:1.6;">
+            <div style="margin-bottom:10px;">${photoHtml}</div>
+            <div><strong>No:</strong> ${item.no}</div>
+            <div><strong>Tanggal:</strong> ${escapeHtml(item.tanggal || '-')}</div>
+            <div><strong>Observasi By:</strong> ${escapeHtml(item.observasiBy || '-')}</div>
+            <div><strong>Departemen:</strong> ${escapeHtml(item.departemen || '-')}</div>
+            <div><strong>Tipe:</strong> ${escapeHtml(item.tipe || '-')}</div>
+            <div><strong>Lokasi:</strong> ${escapeHtml(item.lokasi || '-')}</div>
+            <div><strong>Status:</strong> ${escapeHtml(item.status || '-')}</div>
+            <div><strong>Deskripsi Gambar:</strong> ${escapeHtml(item.photoDescription || '-')}</div>
+        </div>
+    `;
+
+    if (hasSwal()) {
+        await window.Swal.fire({
+            title: `Detail Observasi #${item.no}`,
+            html,
+            showCloseButton: true,
+            showConfirmButton: true,
+            confirmButtonText: 'Tutup',
+            confirmButtonColor: '#6c757d',
+            width: 'min(760px, 96vw)'
+        });
+        return;
+    }
+
+    window.alert('Detail observasi ditampilkan.');
+}
+
+function getTotalPages(totalItems, pageSize) {
+    return Math.max(1, Math.ceil(totalItems / pageSize));
+}
+
+function clampPageNumber(page, totalItems, pageSize) {
+    const totalPages = getTotalPages(totalItems, pageSize);
+    if (!Number.isFinite(page) || page < 1) return 1;
+    if (page > totalPages) return totalPages;
+    return page;
+}
+
+function getPaginatedItems(items, page, pageSize) {
+    const safePage = clampPageNumber(page, items.length, pageSize);
+    const startIndex = (safePage - 1) * pageSize;
+    return {
+        safePage,
+        startIndex,
+        rows: items.slice(startIndex, startIndex + pageSize)
+    };
+}
+
+function renderPaginationControls(infoEl, prevEl, nextEl, page, totalItems, pageSize) {
+    const totalPages = getTotalPages(totalItems, pageSize);
+    if (infoEl) infoEl.textContent = `Halaman ${page} dari ${totalPages} (${totalItems} data)`;
+    if (prevEl) prevEl.disabled = page <= 1 || totalItems === 0;
+    if (nextEl) nextEl.disabled = page >= totalPages || totalItems === 0;
+}
+
+function renderObservasiTable() {
+    if (!observasiTableBody) return;
+    observasiTableBody.innerHTML = '';
+    const totalItems = state.filtered.length;
+    paginationState.observasi = clampPageNumber(paginationState.observasi, totalItems, PAGE_SIZE.observasi);
+    const paged = getPaginatedItems(state.filtered, paginationState.observasi, PAGE_SIZE.observasi);
+
+    if (!totalItems) {
+        const emptyText = state.records.length
+            ? 'Tidak ada data yang cocok dengan pencarian/filter saat ini.'
+            : 'Belum ada data observasi.';
+        observasiTableBody.innerHTML = `<tr><td colspan="10" class="empty-table">${emptyText}</td></tr>`;
+        renderPaginationControls(observasiPaginationInfo, observasiPaginationPrev, observasiPaginationNext, 1, 0, PAGE_SIZE.observasi);
+        return;
+    }
+
+    paged.rows.forEach((item) => {
         const photoCell = item.photoDataUrl
             ? `<a href="${item.photoDataUrl}" target="_blank" rel="noopener noreferrer" class="table-photo-link"><img src="${item.photoDataUrl}" class="table-photo-thumb" alt="Foto observasi ${item.no}"></a>`
             : '<span class="table-photo-empty">Tidak ada foto</span>';
@@ -1707,25 +1843,39 @@ function renderObservasiTable() {
             <td><span class="status-badge ${getStatusClass(item.status)}">${item.status}</span></td>
             <td>
                 <div class="table-actions">
-                    <button type="button" class="btn-table btn-edit" data-no="${item.no}">Edit</button>
-                    <button type="button" class="btn-table btn-delete" data-no="${item.no}">Delete</button>
+                    <button type="button" class="btn-table btn-view btn-icon" data-no="${item.no}" title="Lihat Detail" aria-label="Lihat Detail"><i class="fas fa-eye"></i></button>
+                    <button type="button" class="btn-table btn-edit btn-icon" data-no="${item.no}" title="Edit" aria-label="Edit"><i class="fas fa-pen"></i></button>
+                    <button type="button" class="btn-table btn-delete btn-icon" data-no="${item.no}" title="Hapus" aria-label="Hapus"><i class="fas fa-trash"></i></button>
                 </div>
             </td>
         `;
         observasiTableBody.appendChild(row);
     });
+
+    renderPaginationControls(
+        observasiPaginationInfo,
+        observasiPaginationPrev,
+        observasiPaginationNext,
+        paged.safePage,
+        totalItems,
+        PAGE_SIZE.observasi
+    );
 }
 
 function renderProgressTable() {
     if (!progressTableBody) return;
     progressTableBody.innerHTML = '';
+    const totalItems = state.records.length;
+    paginationState.progress = clampPageNumber(paginationState.progress, totalItems, PAGE_SIZE.progress);
+    const paged = getPaginatedItems(state.records, paginationState.progress, PAGE_SIZE.progress);
 
-    if (!state.records.length) {
+    if (!totalItems) {
         progressTableBody.innerHTML = '<tr><td colspan="10" class="empty-table">Belum ada data progress.</td></tr>';
+        renderPaginationControls(progressPaginationInfo, progressPaginationPrev, progressPaginationNext, 1, 0, PAGE_SIZE.progress);
         return;
     }
 
-    state.records.forEach((item) => {
+    paged.rows.forEach((item) => {
         const photoCell = item.photoDataUrl
             ? `<a href="${item.photoDataUrl}" target="_blank" rel="noopener noreferrer" class="table-photo-link"><img src="${item.photoDataUrl}" class="table-photo-thumb" alt="Foto observasi ${item.no}"></a>`
             : '<span class="table-photo-empty">Tidak ada foto</span>';
@@ -1749,13 +1899,23 @@ function renderProgressTable() {
             </td>
             <td>
                 <div class="table-actions">
-                    <button type="button" class="btn-table btn-edit" data-no="${item.no}">Edit</button>
-                    <button type="button" class="btn-table btn-delete" data-no="${item.no}">Delete</button>
+                    <button type="button" class="btn-table btn-view btn-icon" data-no="${item.no}" title="Lihat Detail" aria-label="Lihat Detail"><i class="fas fa-eye"></i></button>
+                    <button type="button" class="btn-table btn-edit btn-icon" data-no="${item.no}" title="Edit" aria-label="Edit"><i class="fas fa-pen"></i></button>
+                    <button type="button" class="btn-table btn-delete btn-icon" data-no="${item.no}" title="Hapus" aria-label="Hapus"><i class="fas fa-trash"></i></button>
                 </div>
             </td>
         `;
         progressTableBody.appendChild(row);
     });
+
+    renderPaginationControls(
+        progressPaginationInfo,
+        progressPaginationPrev,
+        progressPaginationNext,
+        paged.safePage,
+        totalItems,
+        PAGE_SIZE.progress
+    );
 }
 
 function initCharts() {
@@ -1820,6 +1980,8 @@ function initCharts() {
         });
     }
 
+    reportSummaryState.typeCounts = { ...typeCounts };
+    reportSummaryState.deptCounts = { ...deptCounts };
     renderReportSummaryTables(typeCounts, deptCounts);
 }
 
@@ -1827,36 +1989,58 @@ function renderReportSummaryTables(typeCounts, deptCounts) {
     if (reportTypeTableBody) {
         reportTypeTableBody.innerHTML = '';
         const typeEntries = Object.entries(typeCounts);
+        paginationState.reportType = clampPageNumber(paginationState.reportType, typeEntries.length, PAGE_SIZE.report);
+        const pagedType = getPaginatedItems(typeEntries, paginationState.reportType, PAGE_SIZE.report);
         if (!typeEntries.length) {
             reportTypeTableBody.innerHTML = '<tr><td colspan="3" class="empty-table">Belum ada data report tipe.</td></tr>';
+            renderPaginationControls(reportTypePaginationInfo, reportTypePaginationPrev, reportTypePaginationNext, 1, 0, PAGE_SIZE.report);
         } else {
-            typeEntries.forEach(([name, total], index) => {
+            pagedType.rows.forEach(([name, total], index) => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td>${index + 1}</td>
+                    <td>${pagedType.startIndex + index + 1}</td>
                     <td>${escapeHtml(name)}</td>
                     <td>${total}</td>
                 `;
                 reportTypeTableBody.appendChild(row);
             });
+            renderPaginationControls(
+                reportTypePaginationInfo,
+                reportTypePaginationPrev,
+                reportTypePaginationNext,
+                pagedType.safePage,
+                typeEntries.length,
+                PAGE_SIZE.report
+            );
         }
     }
 
     if (reportDeptTableBody) {
         reportDeptTableBody.innerHTML = '';
         const deptEntries = Object.entries(deptCounts);
+        paginationState.reportDept = clampPageNumber(paginationState.reportDept, deptEntries.length, PAGE_SIZE.report);
+        const pagedDept = getPaginatedItems(deptEntries, paginationState.reportDept, PAGE_SIZE.report);
         if (!deptEntries.length) {
             reportDeptTableBody.innerHTML = '<tr><td colspan="3" class="empty-table">Belum ada data report departemen.</td></tr>';
+            renderPaginationControls(reportDeptPaginationInfo, reportDeptPaginationPrev, reportDeptPaginationNext, 1, 0, PAGE_SIZE.report);
         } else {
-            deptEntries.forEach(([name, total], index) => {
+            pagedDept.rows.forEach(([name, total], index) => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td>${index + 1}</td>
+                    <td>${pagedDept.startIndex + index + 1}</td>
                     <td>${escapeHtml(name)}</td>
                     <td>${total}</td>
                 `;
                 reportDeptTableBody.appendChild(row);
             });
+            renderPaginationControls(
+                reportDeptPaginationInfo,
+                reportDeptPaginationPrev,
+                reportDeptPaginationNext,
+                pagedDept.safePage,
+                deptEntries.length,
+                PAGE_SIZE.report
+            );
         }
     }
 }
@@ -2016,6 +2200,7 @@ function runNavSearch() {
     }
 
     if (searchInput) searchInput.value = term;
+    paginationState.observasi = 1;
     renderAllObservasiViews();
     scrollToSection('data-observasi');
     showNotification(`Tidak ada menu spesifik untuk "${term}", menampilkan hasil di Data Observasi.`, 'info');
@@ -2115,6 +2300,7 @@ if (observasiTableBody) {
         const no = Number(actionBtn.dataset.no);
         if (!no) return;
 
+        if (actionBtn.classList.contains('btn-view')) showObservasiDetailModal(no);
         if (actionBtn.classList.contains('btn-edit')) editObservasi(no);
         if (actionBtn.classList.contains('btn-delete')) deleteObservasi(no);
     });
@@ -2133,6 +2319,7 @@ if (progressTableBody) {
         const no = Number(actionBtn.dataset.no);
         if (!no) return;
 
+        if (actionBtn.classList.contains('btn-view')) showObservasiDetailModal(no);
         if (actionBtn.classList.contains('btn-edit')) editObservasi(no);
         if (actionBtn.classList.contains('btn-delete')) deleteObservasi(no);
     });
@@ -2149,8 +2336,67 @@ if (progressTableBody) {
 }
 
 // Filters
-if (searchInput) searchInput.addEventListener('input', renderAllObservasiViews);
-if (filterType) filterType.addEventListener('change', renderAllObservasiViews);
+if (searchInput) {
+    searchInput.addEventListener('input', () => {
+        paginationState.observasi = 1;
+        renderAllObservasiViews();
+    });
+}
+if (filterType) {
+    filterType.addEventListener('change', () => {
+        paginationState.observasi = 1;
+        renderAllObservasiViews();
+    });
+}
+
+if (observasiPaginationPrev) {
+    observasiPaginationPrev.addEventListener('click', () => {
+        paginationState.observasi = Math.max(1, paginationState.observasi - 1);
+        renderObservasiTable();
+    });
+}
+if (observasiPaginationNext) {
+    observasiPaginationNext.addEventListener('click', () => {
+        paginationState.observasi += 1;
+        renderObservasiTable();
+    });
+}
+if (progressPaginationPrev) {
+    progressPaginationPrev.addEventListener('click', () => {
+        paginationState.progress = Math.max(1, paginationState.progress - 1);
+        renderProgressTable();
+    });
+}
+if (progressPaginationNext) {
+    progressPaginationNext.addEventListener('click', () => {
+        paginationState.progress += 1;
+        renderProgressTable();
+    });
+}
+if (reportTypePaginationPrev) {
+    reportTypePaginationPrev.addEventListener('click', () => {
+        paginationState.reportType = Math.max(1, paginationState.reportType - 1);
+        renderReportSummaryTables(reportSummaryState.typeCounts, reportSummaryState.deptCounts);
+    });
+}
+if (reportTypePaginationNext) {
+    reportTypePaginationNext.addEventListener('click', () => {
+        paginationState.reportType += 1;
+        renderReportSummaryTables(reportSummaryState.typeCounts, reportSummaryState.deptCounts);
+    });
+}
+if (reportDeptPaginationPrev) {
+    reportDeptPaginationPrev.addEventListener('click', () => {
+        paginationState.reportDept = Math.max(1, paginationState.reportDept - 1);
+        renderReportSummaryTables(reportSummaryState.typeCounts, reportSummaryState.deptCounts);
+    });
+}
+if (reportDeptPaginationNext) {
+    reportDeptPaginationNext.addEventListener('click', () => {
+        paginationState.reportDept += 1;
+        renderReportSummaryTables(reportSummaryState.typeCounts, reportSummaryState.deptCounts);
+    });
+}
 
 // CRUD controls
 if (addObservasiBtn) addObservasiBtn.addEventListener('click', () => setFormMode('create'));
