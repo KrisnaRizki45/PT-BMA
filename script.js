@@ -12,6 +12,10 @@ const navbar = document.querySelector('.navbar');
 const heroSection = document.querySelector('.hero');
 const heroBgLayer = document.getElementById('heroBgLayer');
 const hseInfoImage = document.getElementById('hseInfoImage');
+const safetyInductionVideo = document.getElementById('safetyInductionVideo');
+const reportSection = document.getElementById('observasi-report');
+const globalLoading = document.getElementById('globalLoading');
+const globalLoadingText = document.getElementById('globalLoadingText');
 
 // Observasi UI
 const searchInput = document.getElementById('searchInput');
@@ -103,6 +107,7 @@ let supabaseClient = null;
 let useSupabase = false;
 let syncWarned = false;
 let localCacheWarned = false;
+let loadingCounter = 0;
 
 const state = {
     records: [],
@@ -135,6 +140,7 @@ const hseFiles = [];
 let currentFormPhotoDataUrl = '';
 let currentFormPhotoName = '';
 let isPhotoProcessing = false;
+let isReportRenderEnabled = false;
 const rotatingAssetImages = [
     'assets/YEL08697.JPG.jpeg',
     'assets/YEL08705.JPG.jpeg',
@@ -172,6 +178,23 @@ const rotatingAssetImages = [
 function generateId() {
     if (window.crypto && window.crypto.randomUUID) return window.crypto.randomUUID();
     return `id_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+}
+
+function showGlobalLoading(message = 'Memproses data...') {
+    if (!globalLoading) return;
+    loadingCounter += 1;
+    globalLoading.classList.add('active');
+    globalLoading.setAttribute('aria-busy', 'true');
+    if (globalLoadingText) globalLoadingText.textContent = message;
+}
+
+function hideGlobalLoading() {
+    if (!globalLoading) return;
+    loadingCounter = Math.max(0, loadingCounter - 1);
+    if (loadingCounter > 0) return;
+    globalLoading.classList.remove('active');
+    globalLoading.setAttribute('aria-busy', 'false');
+    if (globalLoadingText) globalLoadingText.textContent = 'Loading...';
 }
 
 function normalizeStatus(status) {
@@ -861,6 +884,7 @@ function pickAndReadFile(inputElement) {
 
 async function importFromInput(inputElement, labelElement, acceptedHint) {
     const previousRecords = state.records.map((item) => ({ ...item }));
+    showGlobalLoading('Mengimpor data...');
 
     try {
         const { file, content, isBinary } = await pickAndReadFile(inputElement);
@@ -890,6 +914,8 @@ async function importFromInput(inputElement, labelElement, acceptedHint) {
         reindexRecords();
         renderAllObservasiViews();
         showNotification('Import gagal. Periksa format file.', 'error');
+    } finally {
+        hideGlobalLoading();
     }
 }
 
@@ -973,20 +999,21 @@ function setP2k3State(item) {
 }
 
 async function clearP2k3Upload() {
+    showGlobalLoading('Menghapus dokumen P2K3...');
     try {
         if (useSupabase) {
             await clearP2k3SupabaseData();
         }
+        revokeObjectUrl(p2k3State.fileUrl);
+        setP2k3State(null);
+        saveP2k3LocalCache(null);
+        showNotification('Dokumen P2K3 berhasil dihapus.', 'success');
     } catch (error) {
         logSupabaseError('clearP2k3Upload', error, { table: SUPABASE_P2K3_TABLE, bucket: SUPABASE_DOC_BUCKET });
         showNotification('Gagal hapus dokumen P2K3 dari database.', 'error');
-        return;
+    } finally {
+        hideGlobalLoading();
     }
-
-    revokeObjectUrl(p2k3State.fileUrl);
-    setP2k3State(null);
-    saveP2k3LocalCache(null);
-    showNotification('Dokumen P2K3 berhasil dihapus.', 'success');
 }
 
 async function handleP2k3Upload() {
@@ -995,6 +1022,7 @@ async function handleP2k3Upload() {
     p2k3UploadInput.onchange = async () => {
         const file = p2k3UploadInput.files && p2k3UploadInput.files[0];
         if (!file) return;
+        showGlobalLoading('Mengunggah dokumen P2K3...');
 
         try {
             if (useSupabase) {
@@ -1030,6 +1058,8 @@ async function handleP2k3Upload() {
         } catch (error) {
             logSupabaseError('handleP2k3Upload', error, { table: SUPABASE_P2K3_TABLE, bucket: SUPABASE_DOC_BUCKET });
             showNotification('Upload dokumen P2K3 gagal. Cek konfigurasi Supabase.', 'error');
+        } finally {
+            hideGlobalLoading();
         }
     };
 
@@ -1043,6 +1073,7 @@ async function handleHseUpload() {
     hseUploadInput.onchange = async () => {
         const files = Array.from(hseUploadInput.files || []);
         if (!files.length) return;
+        showGlobalLoading('Mengunggah dokumen HSE...');
 
         try {
             if (useSupabase) {
@@ -1080,6 +1111,8 @@ async function handleHseUpload() {
         } catch (error) {
             logSupabaseError('handleHseUpload', error, { table: SUPABASE_HSE_TABLE, bucket: SUPABASE_DOC_BUCKET });
             showNotification('Upload dokumen HSE gagal. Cek konfigurasi Supabase.', 'error');
+        } finally {
+            hideGlobalLoading();
         }
     };
 
@@ -1121,22 +1154,23 @@ function renderHseFileLinks() {
 }
 
 async function clearHseUploads() {
+    showGlobalLoading('Menghapus dokumen HSE...');
     try {
         if (useSupabase) {
             await clearHseSupabaseData();
         } else {
             hseFiles.forEach((item) => revokeObjectUrl(item.url));
         }
+        hseFiles.length = 0;
+        saveHseLocalCache([]);
+        renderHseFileLinks();
+        showNotification('Semua dokumen HSE berhasil dihapus.', 'success');
     } catch (error) {
         logSupabaseError('clearHseUploads', error, { table: SUPABASE_HSE_TABLE, bucket: SUPABASE_DOC_BUCKET });
         showNotification('Gagal hapus semua dokumen HSE.', 'error');
-        return;
+    } finally {
+        hideGlobalLoading();
     }
-
-    hseFiles.length = 0;
-    saveHseLocalCache([]);
-    renderHseFileLinks();
-    showNotification('Semua dokumen HSE berhasil dihapus.', 'success');
 }
 
 async function loadSupportingDocumentData() {
@@ -1550,6 +1584,7 @@ async function clearAllData() {
     if (!confirmed) return;
 
     const previousRecords = state.records.map((item) => ({ ...item }));
+    showGlobalLoading('Menghapus semua data observasi...');
 
     try {
         state.records = [];
@@ -1561,6 +1596,8 @@ async function clearAllData() {
         state.records = previousRecords;
         renderAllObservasiViews();
         showNotification('Gagal menghapus semua data observasi.', 'error');
+    } finally {
+        hideGlobalLoading();
     }
 }
 
@@ -1630,6 +1667,7 @@ async function handleObservasiSubmit(event) {
     const editNo = Number(editNoInput.value);
     const previousRecords = state.records.map((item) => ({ ...item }));
     const isEditMode = !!editNo;
+    showGlobalLoading(isEditMode ? 'Memperbarui observasi...' : 'Menyimpan observasi...');
 
     try {
         if (isEditMode) {
@@ -1648,6 +1686,8 @@ async function handleObservasiSubmit(event) {
         reindexRecords();
         renderAllObservasiViews();
         showNotification(isEditMode ? 'Gagal memperbarui data observasi.' : 'Gagal menambahkan data observasi.', 'error');
+    } finally {
+        hideGlobalLoading();
     }
 }
 
@@ -1685,6 +1725,7 @@ async function deleteObservasi(no) {
     if (!confirmed) return;
 
     const previousRecords = state.records.map((row) => ({ ...row }));
+    showGlobalLoading('Menghapus data observasi...');
 
     try {
         state.records = state.records.filter((row) => row.no !== no);
@@ -1697,12 +1738,15 @@ async function deleteObservasi(no) {
         reindexRecords();
         renderAllObservasiViews();
         showNotification('Gagal menghapus data observasi.', 'error');
+    } finally {
+        hideGlobalLoading();
     }
 }
 
 async function updateObservasiStatus(no, status) {
     const previousRecords = state.records.map((item) => ({ ...item }));
     state.records = state.records.map((item) => item.no === no ? { ...item, status: normalizeStatus(status) } : item);
+    showGlobalLoading('Memperbarui status observasi...');
 
     try {
         await syncBackend();
@@ -1712,6 +1756,8 @@ async function updateObservasiStatus(no, status) {
         reindexRecords();
         renderAllObservasiViews();
         showNotification('Gagal memperbarui status observasi.', 'error');
+    } finally {
+        hideGlobalLoading();
     }
 }
 
@@ -1827,7 +1873,7 @@ function renderObservasiTable() {
 
     paged.rows.forEach((item) => {
         const photoCell = item.photoDataUrl
-            ? `<a href="${item.photoDataUrl}" target="_blank" rel="noopener noreferrer" class="table-photo-link"><img src="${item.photoDataUrl}" class="table-photo-thumb" alt="Foto observasi ${item.no}"></a>`
+            ? `<a href="${item.photoDataUrl}" target="_blank" rel="noopener noreferrer" class="table-photo-link"><img src="${item.photoDataUrl}" class="table-photo-thumb" alt="Foto observasi ${item.no}" loading="lazy" decoding="async"></a>`
             : '<span class="table-photo-empty">Tidak ada foto</span>';
 
         const row = document.createElement('tr');
@@ -1877,7 +1923,7 @@ function renderProgressTable() {
 
     paged.rows.forEach((item) => {
         const photoCell = item.photoDataUrl
-            ? `<a href="${item.photoDataUrl}" target="_blank" rel="noopener noreferrer" class="table-photo-link"><img src="${item.photoDataUrl}" class="table-photo-thumb" alt="Foto observasi ${item.no}"></a>`
+            ? `<a href="${item.photoDataUrl}" target="_blank" rel="noopener noreferrer" class="table-photo-link"><img src="${item.photoDataUrl}" class="table-photo-thumb" alt="Foto observasi ${item.no}" loading="lazy" decoding="async"></a>`
             : '<span class="table-photo-empty">Tidak ada foto</span>';
 
         const row = document.createElement('tr');
@@ -1919,13 +1965,7 @@ function renderProgressTable() {
 }
 
 function initCharts() {
-    const typeCounts = {};
-    const deptCounts = {};
-
-    state.records.forEach((item) => {
-        typeCounts[item.tipe] = (typeCounts[item.tipe] || 0) + 1;
-        deptCounts[item.departemen] = (deptCounts[item.departemen] || 0) + 1;
-    });
+    const { typeCounts, deptCounts } = buildReportCounts();
 
     const typeCtx = document.getElementById('typeChart');
     const deptCtx = document.getElementById('deptChart');
@@ -1983,6 +2023,54 @@ function initCharts() {
     reportSummaryState.typeCounts = { ...typeCounts };
     reportSummaryState.deptCounts = { ...deptCounts };
     renderReportSummaryTables(typeCounts, deptCounts);
+}
+
+function buildReportCounts() {
+    const typeCounts = {};
+    const deptCounts = {};
+
+    state.records.forEach((item) => {
+        typeCounts[item.tipe] = (typeCounts[item.tipe] || 0) + 1;
+        deptCounts[item.departemen] = (deptCounts[item.departemen] || 0) + 1;
+    });
+
+    return { typeCounts, deptCounts };
+}
+
+function refreshReportCacheOnly() {
+    const { typeCounts, deptCounts } = buildReportCounts();
+    reportSummaryState.typeCounts = { ...typeCounts };
+    reportSummaryState.deptCounts = { ...deptCounts };
+}
+
+function initLazySectionLoaders() {
+    if (safetyInductionVideo) {
+        const videoObserver = new IntersectionObserver((entries, observer) => {
+            entries.forEach((entry) => {
+                if (!entry.isIntersecting) return;
+                const source = safetyInductionVideo.getAttribute('data-src') || '';
+                if (source && safetyInductionVideo.getAttribute('src') !== source) {
+                    safetyInductionVideo.setAttribute('src', source);
+                }
+                observer.unobserve(entry.target);
+            });
+        }, { rootMargin: '150px 0px', threshold: 0.05 });
+
+        const section = document.getElementById('safety-induction');
+        if (section) videoObserver.observe(section);
+    }
+
+    if (reportSection) {
+        const reportObserver = new IntersectionObserver((entries, observer) => {
+            entries.forEach((entry) => {
+                if (!entry.isIntersecting) return;
+                isReportRenderEnabled = true;
+                initCharts();
+                observer.unobserve(entry.target);
+            });
+        }, { rootMargin: '120px 0px', threshold: 0.05 });
+        reportObserver.observe(reportSection);
+    }
 }
 
 function renderReportSummaryTables(typeCounts, deptCounts) {
@@ -2049,7 +2137,8 @@ function renderAllObservasiViews() {
     applyFilters();
     renderObservasiTable();
     renderProgressTable();
-    initCharts();
+    if (isReportRenderEnabled) initCharts();
+    else refreshReportCacheOnly();
 }
 
 function pickNextIndex(currentIndex, length) {
@@ -2495,19 +2584,25 @@ const observer = new IntersectionObserver((entries) => {
 }, observerOptions);
 
 document.addEventListener('DOMContentLoaded', async () => {
+    showGlobalLoading('Menyiapkan website...');
     applyCurrentYearLabels();
     document.querySelectorAll('section').forEach((section) => observer.observe(section));
+    initLazySectionLoaders();
     initRotatingImages();
     renderFormPhotoPreview();
     initP2k3DefaultViewer();
-    await loadInitialData();
-    await loadSupportingDocumentData();
-    renderAllObservasiViews();
+    try {
+        await loadInitialData();
+        await loadSupportingDocumentData();
+        renderAllObservasiViews();
 
-    if (useSupabase) {
-        showNotification('Backend Supabase aktif.', 'success');
-    } else {
-        showNotification('Backend localStorage aktif. Tambahkan config Supabase untuk mode cloud.', 'info');
+        if (useSupabase) {
+            showNotification('Backend Supabase aktif.', 'success');
+        } else {
+            showNotification('Backend localStorage aktif. Tambahkan config Supabase untuk mode cloud.', 'info');
+        }
+    } finally {
+        hideGlobalLoading();
     }
 });
 

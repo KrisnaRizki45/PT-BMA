@@ -8,6 +8,12 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
+    <div id="globalLoading" class="global-loading" aria-live="polite" aria-busy="false">
+        <div class="global-loading-content">
+            <div class="global-loading-spinner"></div>
+            <p id="globalLoadingText">Loading...</p>
+        </div>
+    </div>
     <!-- Navigation -->
     <nav class="navbar">
         <div class="nav-container">
@@ -98,7 +104,7 @@
             <h2 class="section-title">INFO HSE</h2>
             <div class="info-hse-content">
                 <div class="info-image">
-                    <img id="hseInfoImage" src="assets/YEL08836.JPG.jpeg" alt="Aktivitas Safety PT Bhumiadya Indonesia">
+                    <img id="hseInfoImage" src="assets/YEL08836.JPG.jpeg" alt="Aktivitas Safety PT Bhumiadya Indonesia" loading="lazy" decoding="async">
                 </div>
                 <div class="info-text">
                     <h3>SAFETY SEBAGAI KEBIASAAN</h3>
@@ -151,6 +157,7 @@
                     id="pdfViewer" 
                     src="about:blank" 
                     frameborder="0" 
+                    loading="lazy"
                     allowfullscreen="true" 
                     mozallowfullscreen="true" 
                     webkitallowfullscreen="true">
@@ -191,9 +198,12 @@
             <div class="induction-content">
                 <div class="video-container">
                     <iframe 
-                        src="https://www.youtube.com/embed/Z14Q201Y2uk?si=zkyDeY7SIYucqm8-" 
+                        id="safetyInductionVideo"
+                        src="about:blank"
+                        data-src="https://www.youtube.com/embed/Z14Q201Y2uk?si=zkyDeY7SIYucqm8-"
                         title="YouTube video player"
                         frameborder="0" 
+                        loading="lazy"
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
                         referrerpolicy="strict-origin-when-cross-origin"
                         allowfullscreen>

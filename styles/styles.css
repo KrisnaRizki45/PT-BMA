@@ -26,6 +26,47 @@ body {
     overflow-x: hidden;
 }
 
+.global-loading {
+    position: fixed;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.78);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+    backdrop-filter: blur(2px);
+}
+
+.global-loading.active {
+    display: flex;
+}
+
+.global-loading-content {
+    text-align: center;
+    background: #ffffff;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    min-width: 170px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.global-loading-spinner {
+    width: 38px;
+    height: 38px;
+    margin: 0 auto 0.6rem;
+    border: 4px solid #dbe2ea;
+    border-top-color: var(--primary-color);
+    border-radius: 999px;
+    animation: spin 0.85s linear infinite;
+}
+
+#globalLoadingText {
+    color: var(--secondary-color);
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
 .container {
     max-width: 1200px;
     margin: 0 auto;
@@ -1210,6 +1251,12 @@ body {
 
 .fade-in {
     animation: fadeIn 0.6s ease-out;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 /* Smooth Scroll */
