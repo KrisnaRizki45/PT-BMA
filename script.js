@@ -2,6 +2,10 @@
 const navToggle = document.getElementById('navToggle');
 const navMenu = document.getElementById('navMenu');
 const navLinks = document.querySelectorAll('.nav-link');
+const sidebarLinks = document.querySelectorAll('.sidebar-link');
+const sidebarToggle = document.getElementById('sidebarToggle');
+const sidebarCloseBtn = document.getElementById('sidebarCloseBtn');
+const sidebarBackdrop = document.getElementById('sidebarBackdrop');
 const observasiDropdown = document.getElementById('observasiDropdown');
 const observasiToggle = document.getElementById('observasiToggle');
 const dropdownLinks = document.querySelectorAll('.dropdown-link');
@@ -108,6 +112,7 @@ let useSupabase = false;
 let syncWarned = false;
 let localCacheWarned = false;
 let loadingCounter = 0;
+const SIDEBAR_COLLAPSED_KEY = 'sams_sidebar_collapsed_v1';
 
 const state = {
     records: [],
@@ -141,38 +146,39 @@ let currentFormPhotoDataUrl = '';
 let currentFormPhotoName = '';
 let isPhotoProcessing = false;
 let isReportRenderEnabled = false;
+const ASSET_BASE = normalizePathname(window.location.pathname).startsWith('pages/') ? '../assets/' : 'assets/';
 const rotatingAssetImages = [
-    'assets/YEL08697.JPG.jpeg',
-    'assets/YEL08705.JPG.jpeg',
-    'assets/YEL08730.JPG.jpeg',
-    'assets/YEL08737.JPG.jpeg',
-    'assets/YEL08781.JPG.jpeg',
-    'assets/YEL08799.JPG.jpeg',
-    'assets/YEL08810.JPG.jpeg',
-    'assets/YEL08814.JPG.jpeg',
-    'assets/YEL08836.JPG.jpeg',
-    'assets/YEL08842.JPG.jpeg',
-    'assets/YEL08844.JPG.jpeg',
-    'assets/YEL08854.JPG.jpeg',
-    'assets/YEL08870.JPG.jpeg',
-    'assets/YEL08879.JPG.jpeg',
-    'assets/YEL08904.JPG.jpeg',
-    'assets/YEL08905.JPG.jpeg',
-    'assets/YEL08922.JPG.jpeg',
-    'assets/YEL08926.JPG.jpeg',
-    'assets/YEL08949.JPG.jpeg',
-    'assets/YEL08967.JPG.jpeg',
-    'assets/YEL08970.JPG.jpeg',
-    'assets/YEL08975.JPG.jpeg',
-    'assets/YEL08983.JPG.jpeg',
-    'assets/YEL08992.JPG.jpeg',
-    'assets/YEL09007.JPG.jpeg',
-    'assets/YEL09045.JPG.jpeg',
-    'assets/YEL09048.JPG.jpeg',
-    'assets/YEL09049.JPG.jpeg',
-    'assets/YEL09052.JPG.jpeg',
-    'assets/YEL09087.JPG.jpeg',
-    'assets/YEL09106.JPG.jpeg'
+    `${ASSET_BASE}YEL08697.JPG.jpeg`,
+    `${ASSET_BASE}YEL08705.JPG.jpeg`,
+    `${ASSET_BASE}YEL08730.JPG.jpeg`,
+    `${ASSET_BASE}YEL08737.JPG.jpeg`,
+    `${ASSET_BASE}YEL08781.JPG.jpeg`,
+    `${ASSET_BASE}YEL08799.JPG.jpeg`,
+    `${ASSET_BASE}YEL08810.JPG.jpeg`,
+    `${ASSET_BASE}YEL08814.JPG.jpeg`,
+    `${ASSET_BASE}YEL08836.JPG.jpeg`,
+    `${ASSET_BASE}YEL08842.JPG.jpeg`,
+    `${ASSET_BASE}YEL08844.JPG.jpeg`,
+    `${ASSET_BASE}YEL08854.JPG.jpeg`,
+    `${ASSET_BASE}YEL08870.JPG.jpeg`,
+    `${ASSET_BASE}YEL08879.JPG.jpeg`,
+    `${ASSET_BASE}YEL08904.JPG.jpeg`,
+    `${ASSET_BASE}YEL08905.JPG.jpeg`,
+    `${ASSET_BASE}YEL08922.JPG.jpeg`,
+    `${ASSET_BASE}YEL08926.JPG.jpeg`,
+    `${ASSET_BASE}YEL08949.JPG.jpeg`,
+    `${ASSET_BASE}YEL08967.JPG.jpeg`,
+    `${ASSET_BASE}YEL08970.JPG.jpeg`,
+    `${ASSET_BASE}YEL08975.JPG.jpeg`,
+    `${ASSET_BASE}YEL08983.JPG.jpeg`,
+    `${ASSET_BASE}YEL08992.JPG.jpeg`,
+    `${ASSET_BASE}YEL09007.JPG.jpeg`,
+    `${ASSET_BASE}YEL09045.JPG.jpeg`,
+    `${ASSET_BASE}YEL09048.JPG.jpeg`,
+    `${ASSET_BASE}YEL09049.JPG.jpeg`,
+    `${ASSET_BASE}YEL09052.JPG.jpeg`,
+    `${ASSET_BASE}YEL09087.JPG.jpeg`,
+    `${ASSET_BASE}YEL09106.JPG.jpeg`
 ];
 
 function generateId() {
@@ -909,7 +915,10 @@ async function importFromInput(inputElement, labelElement, acceptedHint) {
         renderAllObservasiViews();
         showNotification(`Import berhasil (${state.records.length} data).`, 'success');
     } catch (error) {
-        if (String(error.message).includes('Tidak ada file')) return;
+        if (String(error.message).includes('Tidak ada file')) {
+            showNotification('Import dibatalkan. Tidak ada file dipilih.', 'info');
+            return;
+        }
         state.records = previousRecords;
         reindexRecords();
         renderAllObservasiViews();
@@ -999,6 +1008,23 @@ function setP2k3State(item) {
 }
 
 async function clearP2k3Upload() {
+    if (!p2k3State.fileUrl && !p2k3State.storagePath && !p2k3State.fileName) {
+        showNotification('Belum ada dokumen P2K3 untuk dihapus.', 'info');
+        return;
+    }
+
+    const confirmed = await showConfirmDialog({
+        title: 'Hapus Dokumen P2K3?',
+        text: 'Dokumen P2K3 yang tersimpan akan dihapus permanen.',
+        confirmButtonText: 'Ya, Hapus',
+        cancelButtonText: 'Batal',
+        icon: 'warning'
+    });
+    if (!confirmed) {
+        showNotification('Penghapusan dokumen P2K3 dibatalkan.', 'info');
+        return;
+    }
+
     showGlobalLoading('Menghapus dokumen P2K3...');
     try {
         if (useSupabase) {
@@ -1021,7 +1047,10 @@ async function handleP2k3Upload() {
     p2k3UploadInput.onchange = null;
     p2k3UploadInput.onchange = async () => {
         const file = p2k3UploadInput.files && p2k3UploadInput.files[0];
-        if (!file) return;
+        if (!file) {
+            showNotification('Upload dibatalkan. Tidak ada file dipilih.', 'info');
+            return;
+        }
         showGlobalLoading('Mengunggah dokumen P2K3...');
 
         try {
@@ -1072,7 +1101,10 @@ async function handleHseUpload() {
     hseUploadInput.onchange = null;
     hseUploadInput.onchange = async () => {
         const files = Array.from(hseUploadInput.files || []);
-        if (!files.length) return;
+        if (!files.length) {
+            showNotification('Upload dibatalkan. Tidak ada file dipilih.', 'info');
+            return;
+        }
         showGlobalLoading('Mengunggah dokumen HSE...');
 
         try {
@@ -1124,6 +1156,20 @@ async function removeHseUploadByIndex(index) {
     const removed = hseFiles.splice(index, 1)[0];
     if (!removed) return;
 
+    const confirmed = await showConfirmDialog({
+        title: 'Hapus Dokumen HSE?',
+        text: `Hapus dokumen "${removed.name}"?`,
+        confirmButtonText: 'Ya, Hapus',
+        cancelButtonText: 'Batal',
+        icon: 'warning'
+    });
+    if (!confirmed) {
+        hseFiles.splice(index, 0, removed);
+        showNotification('Penghapusan dokumen HSE dibatalkan.', 'info');
+        renderHseFileLinks();
+        return;
+    }
+
     try {
         if (useSupabase && removed.id) {
             await deleteHseSupabaseRow(removed);
@@ -1154,6 +1200,23 @@ function renderHseFileLinks() {
 }
 
 async function clearHseUploads() {
+    if (!hseFiles.length) {
+        showNotification('Belum ada dokumen HSE untuk dihapus.', 'info');
+        return;
+    }
+
+    const confirmed = await showConfirmDialog({
+        title: 'Hapus Semua Dokumen HSE?',
+        text: 'Semua dokumen HSE akan dihapus permanen.',
+        confirmButtonText: 'Ya, Hapus',
+        cancelButtonText: 'Batal',
+        icon: 'warning'
+    });
+    if (!confirmed) {
+        showNotification('Penghapusan dokumen HSE dibatalkan.', 'info');
+        return;
+    }
+
     showGlobalLoading('Menghapus dokumen HSE...');
     try {
         if (useSupabase) {
@@ -1220,6 +1283,84 @@ function csvEscape(value) {
     return raw;
 }
 
+function showFallbackDialog(options = {}) {
+    return new Promise((resolve) => {
+        const title = options.title || 'Konfirmasi';
+        const text = options.text || '';
+        const icon = options.icon || 'info';
+        const confirmButtonText = options.confirmButtonText || 'OK';
+        const cancelButtonText = options.cancelButtonText || 'Batal';
+        const showCancel = options.showCancel !== false;
+        const html = options.html || '';
+        const inputType = options.inputType || '';
+        const inputLabel = options.inputLabel || '';
+        const inputChecked = !!options.inputChecked;
+
+        const iconMap = {
+            success: 'fa-circle-check',
+            error: 'fa-circle-xmark',
+            warning: 'fa-triangle-exclamation',
+            question: 'fa-circle-question',
+            info: 'fa-circle-info'
+        };
+
+        const backdrop = document.createElement('div');
+        backdrop.className = 'custom-dialog-backdrop';
+
+        const box = document.createElement('div');
+        box.className = 'custom-dialog-box';
+
+        const bodyHtml = html || `<p class="custom-dialog-text">${escapeHtml(text)}</p>`;
+        const checkboxHtml = inputType === 'checkbox'
+            ? `<label class="custom-dialog-checkbox"><input type="checkbox" id="customDialogCheckbox" ${inputChecked ? 'checked' : ''}> <span>${escapeHtml(inputLabel || 'Pilih opsi')}</span></label>`
+            : '';
+
+        box.innerHTML = `
+            <div class="custom-dialog-header">
+                <i class="fas ${iconMap[icon] || iconMap.info}" aria-hidden="true"></i>
+                <h3>${escapeHtml(title)}</h3>
+            </div>
+            <div class="custom-dialog-body">
+                ${bodyHtml}
+                ${checkboxHtml}
+            </div>
+            <div class="custom-dialog-actions">
+                ${showCancel ? `<button type="button" class="custom-dialog-btn custom-dialog-btn-cancel">${escapeHtml(cancelButtonText)}</button>` : ''}
+                <button type="button" class="custom-dialog-btn custom-dialog-btn-confirm">${escapeHtml(confirmButtonText)}</button>
+            </div>
+        `;
+
+        backdrop.appendChild(box);
+        document.body.appendChild(backdrop);
+
+        const closeDialog = (payload) => {
+            backdrop.remove();
+            resolve(payload);
+        };
+
+        const confirmBtn = box.querySelector('.custom-dialog-btn-confirm');
+        const cancelBtn = box.querySelector('.custom-dialog-btn-cancel');
+        const checkbox = box.querySelector('#customDialogCheckbox');
+
+        if (confirmBtn) {
+            confirmBtn.addEventListener('click', () => {
+                closeDialog({
+                    isConfirmed: true,
+                    value: checkbox instanceof HTMLInputElement ? checkbox.checked : true
+                });
+            });
+        }
+
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => closeDialog({ isConfirmed: false, isDismissed: true }));
+        }
+
+        backdrop.addEventListener('click', (event) => {
+            if (event.target === backdrop) closeDialog({ isConfirmed: false, isDismissed: true });
+        });
+    });
+}
+
 function hasSwal() {
     return !!(window.Swal && typeof window.Swal.fire === 'function');
 }
@@ -1244,7 +1385,15 @@ async function showConfirmDialog(options = {}) {
         return !!result.isConfirmed;
     }
 
-    return window.confirm(text || title);
+    const fallbackResult = await showFallbackDialog({
+        icon,
+        title,
+        text,
+        confirmButtonText,
+        cancelButtonText,
+        showCancel: true
+    });
+    return !!fallbackResult.isConfirmed;
 }
 
 async function askIncludePhotoForCsv(defaultValue) {
@@ -1265,7 +1414,19 @@ async function askIncludePhotoForCsv(defaultValue) {
         return !!result.value;
     }
 
-    return window.confirm('Sertakan data foto di CSV?');
+    const fallbackResult = await showFallbackDialog({
+        icon: 'question',
+        title: 'Export CSV',
+        text: 'Pilih apakah data foto (base64) ikut diexport.',
+        inputType: 'checkbox',
+        inputLabel: 'Sertakan data foto di CSV',
+        inputChecked: !!defaultValue,
+        confirmButtonText: 'Export',
+        cancelButtonText: 'Batal',
+        showCancel: true
+    });
+    if (!fallbackResult.isConfirmed) return null;
+    return !!fallbackResult.value;
 }
 
 function getIncludePhotoCsvOption() {
@@ -1581,7 +1742,10 @@ async function clearAllData() {
         cancelButtonText: 'Batal',
         icon: 'warning'
     });
-    if (!confirmed) return;
+    if (!confirmed) {
+        showNotification('Penghapusan semua data dibatalkan.', 'info');
+        return;
+    }
 
     const previousRecords = state.records.map((item) => ({ ...item }));
     showGlobalLoading('Menghapus semua data observasi...');
@@ -1634,6 +1798,34 @@ function hideFormCard() {
     observasiForm.reset();
     if (editNoInput) editNoInput.value = '';
     clearFormPhoto();
+}
+
+function hasObservasiFormDraft() {
+    if (!observasiForm) return false;
+    const fields = [formTanggal, formObservasiBy, formDepartemen, formTipe, formLokasi, formStatus, formPhotoDescription];
+    const hasText = fields.some((input) => input && String(input.value || '').trim());
+    return hasText || !!currentFormPhotoDataUrl;
+}
+
+async function handleCancelObservasiForm() {
+    if (!observasiFormCard || !observasiFormCard.classList.contains('active')) return;
+
+    if (hasObservasiFormDraft()) {
+        const confirmed = await showConfirmDialog({
+            title: 'Batalkan Input?',
+            text: 'Perubahan pada form observasi akan dibuang.',
+            confirmButtonText: 'Ya, Batalkan',
+            cancelButtonText: 'Lanjut Edit',
+            icon: 'warning'
+        });
+        if (!confirmed) {
+            showNotification('Pembatalan input dibatalkan.', 'info');
+            return;
+        }
+    }
+
+    hideFormCard();
+    showNotification('Form observasi ditutup.', 'info');
 }
 
 async function handleObservasiSubmit(event) {
@@ -1693,7 +1885,10 @@ async function handleObservasiSubmit(event) {
 
 async function editObservasi(no) {
     const item = state.records.find((row) => row.no === no);
-    if (!item) return;
+    if (!item) {
+        showNotification('Data observasi tidak ditemukan.', 'error');
+        return;
+    }
 
     const confirmed = await showConfirmDialog({
         title: 'Edit Data?',
@@ -1702,7 +1897,10 @@ async function editObservasi(no) {
         cancelButtonText: 'Batal',
         icon: 'question'
     });
-    if (!confirmed) return;
+    if (!confirmed) {
+        showNotification('Edit data dibatalkan.', 'info');
+        return;
+    }
 
     setFormMode('edit', item);
     observasiFormCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1722,7 +1920,10 @@ async function deleteObservasi(no) {
         cancelButtonText: 'Batal',
         icon: 'warning'
     });
-    if (!confirmed) return;
+    if (!confirmed) {
+        showNotification('Hapus data dibatalkan.', 'info');
+        return;
+    }
 
     const previousRecords = state.records.map((row) => ({ ...row }));
     showGlobalLoading('Menghapus data observasi...');
@@ -1751,6 +1952,7 @@ async function updateObservasiStatus(no, status) {
     try {
         await syncBackend();
         renderAllObservasiViews();
+        showNotification('Status observasi berhasil diperbarui.', 'success');
     } catch {
         state.records = previousRecords;
         reindexRecords();
@@ -1824,7 +2026,13 @@ async function showObservasiDetailModal(no) {
         return;
     }
 
-    window.alert('Detail observasi ditampilkan.');
+    await showFallbackDialog({
+        icon: 'info',
+        title: `Detail Observasi #${item.no}`,
+        html,
+        confirmButtonText: 'Tutup',
+        showCancel: false
+    });
 }
 
 function getTotalPages(totalItems, pageSize) {
@@ -2234,6 +2442,42 @@ if (navToggle) {
     navToggle.addEventListener('click', () => navMenu.classList.toggle('active'));
 }
 
+if (sidebarToggle) {
+    sidebarToggle.addEventListener('click', () => {
+        if (isMobileViewport()) {
+            const isOpen = document.body.classList.contains('sidebar-open');
+            setSidebarOpenState(!isOpen);
+            return;
+        }
+
+        const isCollapsed = document.body.classList.contains('sidebar-collapsed');
+        setSidebarCollapsedState(!isCollapsed);
+    });
+}
+
+if (sidebarCloseBtn) {
+    sidebarCloseBtn.addEventListener('click', () => {
+        if (isMobileViewport()) {
+            setSidebarOpenState(false);
+            return;
+        }
+
+        const isCollapsed = document.body.classList.contains('sidebar-collapsed');
+        setSidebarCollapsedState(!isCollapsed);
+    });
+}
+
+if (sidebarBackdrop) {
+    sidebarBackdrop.addEventListener('click', () => setSidebarOpenState(false));
+}
+
+window.addEventListener('resize', () => {
+    if (!document.body.classList.contains('layout-sidebar')) return;
+    if (isMobileViewport()) {
+        setSidebarOpenState(false);
+    }
+});
+
 if (observasiToggle) {
     observasiToggle.addEventListener('click', (event) => {
         event.preventDefault();
@@ -2249,6 +2493,7 @@ navLinks.forEach((link) => {
         }
 
         navMenu.classList.remove('active');
+        setSidebarOpenState(false);
         setObservasiDropdownState(false);
         navLinks.forEach((node) => node.classList.remove('active'));
         link.classList.add('active');
@@ -2258,7 +2503,14 @@ navLinks.forEach((link) => {
 dropdownLinks.forEach((link) => {
     link.addEventListener('click', () => {
         navMenu.classList.remove('active');
+        setSidebarOpenState(false);
         setObservasiDropdownState(false);
+    });
+});
+
+sidebarLinks.forEach((link) => {
+    link.addEventListener('click', () => {
+        if (isMobileViewport()) setSidebarOpenState(false);
     });
 });
 
@@ -2274,10 +2526,23 @@ window.addEventListener('scroll', () => {
     });
 
     navLinks.forEach((link) => {
+        const href = String(link.getAttribute('href') || '');
+        if (!href.startsWith('#')) return;
         link.classList.remove('active');
-        if (link.getAttribute('href') === `#${current}`) link.classList.add('active');
+        if (href === `#${current}`) link.classList.add('active');
     });
 });
+
+const SECTION_PAGE_MAP = {
+    beranda: 'index.html',
+    'info-hse': 'pages/info-hse.html',
+    'p2k3-bma': 'pages/p2k3-bma.html',
+    'tambahkan-observasi': 'pages/tambahkan-observasi.html',
+    'safety-induction': 'pages/safety-induction.html',
+    'data-observasi': 'pages/data-observasi.html',
+    'observasi-report': 'pages/observasi-report.html',
+    'observasi-progress': 'pages/observasi-progress.html'
+};
 
 function runNavSearch() {
     const term = String(navSearchInput ? navSearchInput.value : '').trim();
@@ -2311,11 +2576,23 @@ function navigateByKeyword(term) {
     ];
 
     let targetSection = '';
+    let bestScore = 0;
 
     keywordMap.forEach((entry) => {
-        if (targetSection) return;
-        const matched = entry.keys.some((key) => keyword.includes(key) || key.includes(keyword));
-        if (matched) targetSection = entry.section;
+        entry.keys.forEach((key) => {
+            const normalizedKey = String(key || '').toLowerCase().trim();
+            if (!normalizedKey) return;
+
+            let score = 0;
+            if (keyword === normalizedKey) score += 1000;
+            if (keyword.includes(normalizedKey)) score += normalizedKey.length * 10;
+            if (normalizedKey.includes(keyword)) score += Math.max(10, keyword.length * 4);
+
+            if (score > bestScore) {
+                bestScore = score;
+                targetSection = entry.section;
+            }
+        });
     });
 
     if (!targetSection) return false;
@@ -2329,6 +2606,108 @@ function setNavSearchState(isActive) {
     navSearchWrap.classList.toggle('active', isActive);
     navbar.classList.toggle('search-mode', isActive);
     navSearchBtn.setAttribute('aria-expanded', isActive ? 'true' : 'false');
+}
+
+function isMobileViewport() {
+    return window.matchMedia('(max-width: 968px)').matches;
+}
+
+function setSidebarOpenState(isOpen) {
+    const bodyNode = document.body;
+    if (!bodyNode) return;
+    bodyNode.classList.toggle('sidebar-open', !!isOpen);
+}
+
+function setSidebarCollapsedState(isCollapsed) {
+    const bodyNode = document.body;
+    if (!bodyNode) return;
+    bodyNode.classList.toggle('sidebar-collapsed', !!isCollapsed);
+    try {
+        localStorage.setItem(SIDEBAR_COLLAPSED_KEY, isCollapsed ? '1' : '0');
+    } catch {}
+}
+
+function initSidebarState() {
+    if (!document.body || !document.body.classList.contains('layout-sidebar')) return;
+    document.documentElement.classList.remove('sidebar-collapsed-pref');
+    if (isMobileViewport()) {
+        setSidebarOpenState(false);
+        return;
+    }
+
+    let collapsed = false;
+    try {
+        collapsed = localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1';
+    } catch {}
+    setSidebarCollapsedState(collapsed);
+}
+
+function normalizePathname(pathname) {
+    const raw = String(pathname || '').trim().toLowerCase();
+    if (!raw || raw.endsWith('/')) return 'index.html';
+    return raw.replace(/^\/+/, '');
+}
+
+function normalizeRoute(route) {
+    const raw = normalizePathname(route);
+    if (!raw || raw === '.') return 'index.html';
+    if (raw.startsWith('pages/')) return raw;
+    return raw;
+}
+
+function resolveSectionPagePath(sectionId) {
+    const target = SECTION_PAGE_MAP[sectionId];
+    if (!target) return '';
+
+    const inPagesDir = normalizePathname(window.location.pathname).startsWith('pages/');
+    if (!inPagesDir) return target;
+    if (target === 'index.html') return '../index.html';
+    if (target.startsWith('pages/')) return target.replace(/^pages\//, '');
+    return target;
+}
+
+function applyActiveNavigationByPath() {
+    const currentPath = normalizeRoute(normalizePathname(window.location.pathname));
+    const inPagesDir = currentPath.startsWith('pages/');
+    const normalizeLinkHref = (href) => {
+        const value = String(href || '').trim().toLowerCase();
+        if (!value || value.startsWith('#')) return '';
+        const cleaned = value.replace(/^\.\//, '');
+        if (cleaned.startsWith('../')) return cleaned.replace(/^\.\.\//, '');
+        return cleaned;
+    };
+    const applyActive = (links) => {
+        links.forEach((link) => {
+            const href = normalizeLinkHref(link.getAttribute('href') || '');
+            if (!href) return;
+            let route = normalizeRoute(href);
+            if (inPagesDir && !route.startsWith('pages/') && route !== 'index.html') {
+                route = `pages/${route}`;
+            }
+            const samePage = route === currentPath;
+            link.classList.toggle('active', samePage);
+        });
+    };
+
+    applyActive(navLinks);
+    applyActive(sidebarLinks);
+}
+
+function applyPageVisibilityByConfig() {
+    const bodyNode = document.body;
+    if (!bodyNode) return;
+    const raw = String(bodyNode.getAttribute('data-visible-sections') || '').trim();
+    if (!raw) return;
+
+    const allowed = raw.split(',').map((item) => item.trim()).filter(Boolean);
+    if (!allowed.length) return;
+    const allowedSet = new Set(allowed);
+
+    document.querySelectorAll('section').forEach((section) => {
+        const sectionId = String(section.id || '').trim();
+        if (sectionId && allowedSet.has(sectionId)) return;
+        section.style.display = 'none';
+    });
 }
 
 if (navSearchBtn) {
@@ -2489,7 +2868,7 @@ if (reportDeptPaginationNext) {
 
 // CRUD controls
 if (addObservasiBtn) addObservasiBtn.addEventListener('click', () => setFormMode('create'));
-if (cancelObservasiBtn) cancelObservasiBtn.addEventListener('click', hideFormCard);
+if (cancelObservasiBtn) cancelObservasiBtn.addEventListener('click', handleCancelObservasiForm);
 if (observasiForm) observasiForm.addEventListener('submit', handleObservasiSubmit);
 if (importObservasiBtn) importObservasiBtn.addEventListener('click', () => importFromInput(uploadObservasiFile, uploadFileName, 'CSV/TXT/JSON/XLSX'));
 if (exportObservasiBtn) exportObservasiBtn.addEventListener('click', exportObservasiToCsv);
@@ -2513,7 +2892,14 @@ if (hseClearBtn) hseClearBtn.addEventListener('click', clearHseUploads);
 // Global functions used by inline HTML
 function scrollToSection(sectionId) {
     const section = document.getElementById(sectionId);
-    if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const isVisible = !!(section && window.getComputedStyle(section).display !== 'none');
+    if (section && isVisible) {
+        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+    }
+
+    const targetPage = resolveSectionPagePath(sectionId);
+    if (targetPage) window.location.href = targetPage;
 }
 
 function openPDFFullscreen() {
@@ -2586,6 +2972,9 @@ const observer = new IntersectionObserver((entries) => {
 document.addEventListener('DOMContentLoaded', async () => {
     showGlobalLoading('Menyiapkan website...');
     applyCurrentYearLabels();
+    applyPageVisibilityByConfig();
+    applyActiveNavigationByPath();
+    initSidebarState();
     document.querySelectorAll('section').forEach((section) => observer.observe(section));
     initLazySectionLoaders();
     initRotatingImages();

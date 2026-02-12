@@ -13,11 +13,11 @@
             } catch (error) {}
         })();
     </script>
-    <title>SAMS - BMA 2026 | PT Bhumiadya Indonesia</title>
-    <link rel="stylesheet" href="styles/styles.css">
+    <title>SAMS - BMA 2026 | Tambahkan Observasi</title>
+    <link rel="stylesheet" href="../styles/styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body class="layout-sidebar" data-visible-sections="beranda,welcome">
+<body class="layout-sidebar" data-visible-sections="tambahkan-observasi">
     <div id="globalLoading" class="global-loading" aria-live="polite" aria-busy="false">
         <div class="global-loading-content">
             <div class="global-loading-spinner"></div>
@@ -44,19 +44,19 @@
                 </button>
             </div>
             <ul class="nav-menu" id="navMenu">
-                <li><a href="index.html" class="nav-link active">Beranda</a></li>
-                <li><a href="pages/info-hse.html" class="nav-link">Info HSE</a></li>
-                <li><a href="pages/p2k3-bma.html" class="nav-link">P2K3 BMA</a></li>
-                <li><a href="pages/tambahkan-observasi.html" class="nav-link">Tambahkan Observasi</a></li>
-                <li><a href="pages/safety-induction.html" class="nav-link">Safety Induction</a></li>
+                <li><a href="../index.html" class="nav-link active">Beranda</a></li>
+                <li><a href="info-hse.html" class="nav-link">Info HSE</a></li>
+                <li><a href="p2k3-bma.html" class="nav-link">P2K3 BMA</a></li>
+                <li><a href="tambahkan-observasi.html" class="nav-link">Tambahkan Observasi</a></li>
+                <li><a href="safety-induction.html" class="nav-link">Safety Induction</a></li>
                 <li class="dropdown" id="observasiDropdown">
                     <a href="#" class="nav-link dropdown-toggle" id="observasiToggle" aria-expanded="false" aria-controls="observasiSubmenu">
                         Observasi <i class="fas fa-chevron-down"></i>
                     </a>
                     <ul class="dropdown-menu" id="observasiSubmenu">
-                        <li><a href="pages/data-observasi.html" class="dropdown-link">Data Observasi</a></li>
-                        <li><a href="pages/observasi-report.html" class="dropdown-link">Observasi Report</a></li>
-                        <li><a href="pages/observasi-progress.html" class="dropdown-link">Observasi Progress</a></li>
+                        <li><a href="data-observasi.html" class="dropdown-link">Data Observasi</a></li>
+                        <li><a href="observasi-report.html" class="dropdown-link">Observasi Report</a></li>
+                        <li><a href="observasi-progress.html" class="dropdown-link">Observasi Progress</a></li>
                     </ul>
                 </li>
             </ul>
@@ -73,14 +73,14 @@
                 <i class="fas fa-chevron-left"></i>
             </button>
         </div>
-        <a href="index.html" class="sidebar-link"><i class="fas fa-house"></i><span>Beranda</span></a>
-        <a href="pages/info-hse.html" class="sidebar-link"><i class="fas fa-shield-halved"></i><span>Info HSE</span></a>
-        <a href="pages/p2k3-bma.html" class="sidebar-link"><i class="fas fa-users-gear"></i><span>P2K3 BMA</span></a>
-        <a href="pages/tambahkan-observasi.html" class="sidebar-link"><i class="fas fa-file-circle-plus"></i><span>Tambahkan Observasi</span></a>
-        <a href="pages/safety-induction.html" class="sidebar-link"><i class="fas fa-video"></i><span>Safety Induction</span></a>
-        <a href="pages/data-observasi.html" class="sidebar-link"><i class="fas fa-table-list"></i><span>Data Observasi</span></a>
-        <a href="pages/observasi-report.html" class="sidebar-link"><i class="fas fa-chart-pie"></i><span>Observasi Report</span></a>
-        <a href="pages/observasi-progress.html" class="sidebar-link"><i class="fas fa-list-check"></i><span>Observasi Progress</span></a>
+        <a href="../index.html" class="sidebar-link"><i class="fas fa-house"></i><span>Beranda</span></a>
+        <a href="info-hse.html" class="sidebar-link"><i class="fas fa-shield-halved"></i><span>Info HSE</span></a>
+        <a href="p2k3-bma.html" class="sidebar-link"><i class="fas fa-users-gear"></i><span>P2K3 BMA</span></a>
+        <a href="tambahkan-observasi.html" class="sidebar-link"><i class="fas fa-file-circle-plus"></i><span>Tambahkan Observasi</span></a>
+        <a href="safety-induction.html" class="sidebar-link"><i class="fas fa-video"></i><span>Safety Induction</span></a>
+        <a href="data-observasi.html" class="sidebar-link"><i class="fas fa-table-list"></i><span>Data Observasi</span></a>
+        <a href="observasi-report.html" class="sidebar-link"><i class="fas fa-chart-pie"></i><span>Observasi Report</span></a>
+        <a href="observasi-progress.html" class="sidebar-link"><i class="fas fa-list-check"></i><span>Observasi Progress</span></a>
     </aside>
     <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
@@ -138,7 +138,7 @@
             <h2 class="section-title">INFO HSE</h2>
             <div class="info-hse-content">
                 <div class="info-image">
-                    <img id="hseInfoImage" src="assets/YEL08836.JPG.jpeg" alt="Aktivitas Safety PT Bhumiadya Indonesia" loading="lazy" decoding="async">
+                    <img id="hseInfoImage" src="../assets/YEL08836.JPG.jpeg" alt="Aktivitas Safety PT Bhumiadya Indonesia" loading="lazy" decoding="async">
                 </div>
                 <div class="info-text">
                     <h3>SAFETY SEBAGAI KEBIASAAN</h3>
@@ -248,11 +248,11 @@
                     <ul class="material-list">
                         <li>
                             <i class="fas fa-file-pdf"></i>
-                            <a href="assets/Safety%20Induction%20Karyawan%20Baru.pdf" target="_blank" rel="noopener noreferrer">Safety Induction Karyawan Baru</a>
+                            <a href="../assets/Safety%20Induction%20Karyawan%20Baru.pdf" target="_blank" rel="noopener noreferrer">Safety Induction Karyawan Baru</a>
                         </li>
                         <li>
                             <i class="fas fa-file-pdf"></i>
-                            <a href="assets/Safety%20Induction%20Visitor.pdf" target="_blank" rel="noopener noreferrer">Safety Induction Visitor</a>
+                            <a href="../assets/Safety%20Induction%20Visitor.pdf" target="_blank" rel="noopener noreferrer">Safety Induction Visitor</a>
                         </li>
                     </ul>
                 </div>
@@ -543,10 +543,11 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase-config.js"></script>
-    <script src="script.js"></script>
+    <script src="../supabase-config.js"></script>
+    <script src="../script.js"></script>
 </body>
 </html>
+
 
 
 
