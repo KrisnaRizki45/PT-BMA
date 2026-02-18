@@ -2259,6 +2259,9 @@ function initLazySectionLoaders() {
                 const source = safetyInductionVideo.getAttribute('data-src') || '';
                 if (source && safetyInductionVideo.getAttribute('src') !== source) {
                     safetyInductionVideo.setAttribute('src', source);
+                    if (safetyInductionVideo instanceof HTMLVideoElement) {
+                        safetyInductionVideo.load();
+                    }
                 }
                 observer.unobserve(entry.target);
             });
