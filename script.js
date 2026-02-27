@@ -105,14 +105,28 @@ const SUPABASE_TABLE = window.SAMS_SUPABASE_TABLE || 'observasi_records';
 const SUPABASE_P2K3_TABLE = window.SAMS_SUPABASE_P2K3_TABLE || 'meeting_p2k3_files';
 const SUPABASE_HSE_TABLE = window.SAMS_SUPABASE_HSE_TABLE || 'hse_observasi_files_2026';
 const SUPABASE_DOC_BUCKET = window.SAMS_SUPABASE_DOC_BUCKET || 'sams-documents';
+const SUPABASE_PROFILE_TABLE = window.SAMS_SUPABASE_PROFILE_TABLE || 'profiles';
 const SUPABASE_URL = window.SAMS_SUPABASE_URL || '';
 const SUPABASE_ANON_KEY = window.SAMS_SUPABASE_ANON_KEY || '';
+const SUPABASE_ENABLED = window.SAMS_ENABLE_SUPABASE !== false;
 let supabaseClient = null;
 let useSupabase = false;
 let syncWarned = false;
 let localCacheWarned = false;
 let loadingCounter = 0;
 const SIDEBAR_COLLAPSED_KEY = 'sams_sidebar_collapsed_v1';
+const BACKEND_STATUS_ONCE_KEY = 'sams_backend_status_once_v1';
+const BACKEND_STATUS_VALUE_ACTIVE = 'active';
+const BACKEND_STATUS_VALUE_INACTIVE = 'inactive';
+const BACKEND_STATUS_VALUE_ERROR = 'error';
+const ROLE_ADMIN = 'admin';
+const ROLE_VIEWER = 'viewer';
+const userContext = {
+    id: '',
+    email: '',
+    fullName: '',
+    role: ROLE_VIEWER
+};
 
 const state = {
     records: [],
@@ -222,6 +236,20 @@ function getTodayIsoDate() {
     return `${year}-${month}-${day}`;
 }
 
+function getBackendStatusShownOnce() {
+    try {
+        return sessionStorage.getItem(BACKEND_STATUS_ONCE_KEY) || '';
+    } catch {
+        return '';
+    }
+}
+
+function setBackendStatusShownOnce(value) {
+    try {
+        sessionStorage.setItem(BACKEND_STATUS_ONCE_KEY, String(value || ''));
+    } catch {}
+}
+
 function applyCurrentYearLabels() {
     const year = getCurrentYear();
     document.title = `SAMS - BMA ${year} | PT Bhumiadya Indonesia`;
@@ -249,6 +277,160 @@ function formatDateForDisplay(dateValue) {
     }
 
     return value;
+}
+
+function normalizeUserRole(rawRole) {
+    const role = String(rawRole || '').trim().toLowerCase();
+    return role === ROLE_ADMIN ? ROLE_ADMIN : ROLE_VIEWER;
+}
+
+function canManageData() {
+    return normalizeUserRole(userContext.role) === ROLE_ADMIN;
+}
+
+function ensureCrudPermission(actionLabel) {
+    if (canManageData()) return true;
+    showNotification(`Akses ditolak. Role viewer hanya dapat melihat data (${actionLabel}).`, 'error');
+    return false;
+}
+
+function resolveProfilePagePath() {
+    const inPagesDir = normalizePathname(window.location.pathname).startsWith('pages/');
+    return inPagesDir ? './profile.html' : 'pages/profile.html';
+}
+
+function resolveAuthPagePath(fileName) {
+    const inPagesDir = normalizePathname(window.location.pathname).startsWith('pages/');
+    return inPagesDir ? `./auth/${fileName}` : `pages/auth/${fileName}`;
+}
+
+function createNavUserControls() {
+    if (!navSearchWrap || document.getElementById('navUserWrap')) return;
+
+    const wrapper = document.createElement('div');
+    wrapper.id = 'navUserWrap';
+    wrapper.className = 'nav-user-wrap';
+    wrapper.innerHTML = `
+        <button type="button" class="nav-user-btn" id="navProfileBtn" aria-label="Buka profil">
+            <i class="fas fa-user-circle"></i>
+        </button>
+        <button type="button" class="nav-user-btn nav-user-btn-logout" id="navLogoutBtn" aria-label="Logout">
+            <i class="fas fa-right-from-bracket"></i>
+        </button>
+    `;
+
+    navSearchWrap.insertAdjacentElement('afterend', wrapper);
+}
+
+function createSidebarProfileLink() {
+    // Profile hanya lewat ikon topbar, tidak ditampilkan di sidebar.
+}
+
+function applyRoleBasedUi() {
+    const bodyNode = document.body;
+    if (bodyNode) bodyNode.setAttribute('data-user-role', normalizeUserRole(userContext.role));
+
+    const crudButtons = [
+        addObservasiBtn,
+        importObservasiBtn,
+        clearObservasiBtn,
+        reportImportBtn,
+        progressImportBtn,
+        progressDeleteAllBtn,
+        p2k3UploadBtn,
+        p2k3ClearBtn,
+        hseUploadBtn,
+        hseClearBtn
+    ];
+
+    const allowCrud = canManageData();
+    crudButtons.forEach((button) => {
+        if (!button) return;
+        button.disabled = !allowCrud;
+        button.classList.toggle('btn-disabled-role', !allowCrud);
+        if (!allowCrud) button.setAttribute('title', 'Role viewer hanya dapat melihat data');
+        else button.removeAttribute('title');
+    });
+
+    document.querySelectorAll('.progress-status-select').forEach((selectNode) => {
+        if (!(selectNode instanceof HTMLSelectElement)) return;
+        selectNode.disabled = !allowCrud;
+    });
+}
+
+async function loadCurrentUserContext() {
+    if (!window.AuthService || typeof window.AuthService.getSession !== 'function') return;
+
+    try {
+        const session = await window.AuthService.getSession();
+        const user = session && session.user ? session.user : null;
+        if (!user) return;
+
+        userContext.id = String(user.id || '');
+        userContext.email = String(user.email || '');
+        userContext.fullName = String((user.user_metadata && user.user_metadata.full_name) || '');
+        userContext.role = ROLE_VIEWER;
+
+        const client = window.AuthService.getSupabaseClient();
+        if (!client || !userContext.id) return;
+
+        const profileResult = await withSupabaseRetry(() => (
+            client
+                .from(SUPABASE_PROFILE_TABLE)
+                .select('id, full_name, role')
+                .eq('id', userContext.id)
+                .maybeSingle()
+        ));
+
+        if (profileResult.error) {
+            const message = String(profileResult.error.message || '').toLowerCase();
+            if (message.includes('does not exist')) {
+                showNotification('Tabel profiles belum dibuat. Role default viewer dipakai.', 'info');
+                return;
+            }
+            throw profileResult.error;
+        }
+
+        const profile = profileResult.data;
+
+        if (profile) {
+            userContext.fullName = String(profile.full_name || userContext.fullName || '');
+            userContext.role = normalizeUserRole(profile.role);
+        } else {
+            // Hindari auto-upsert saat bootstrap agar tidak memicu request POST yang gagal.
+            // Profile bisa dibuat lewat trigger signup atau halaman profile.
+            userContext.role = ROLE_VIEWER;
+        }
+    } catch (error) {
+        const message = error && error.message ? error.message : 'Gagal memuat role user.';
+        showNotification(message, 'error');
+    }
+}
+
+function bindNavUserActions() {
+    const profileBtn = document.getElementById('navProfileBtn');
+    const logoutBtn = document.getElementById('navLogoutBtn');
+    if (profileBtn) {
+        profileBtn.addEventListener('click', () => {
+            window.location.href = resolveProfilePagePath();
+        });
+    }
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', async () => {
+            const confirmed = await showConfirmDialog({
+                title: 'Logout?',
+                text: 'Anda yakin ingin keluar dari aplikasi?',
+                confirmButtonText: 'Ya, Logout',
+                cancelButtonText: 'Batal',
+                icon: 'question'
+            });
+            if (!confirmed) {
+                showNotification('Logout dibatalkan.', 'info');
+                return;
+            }
+            window.location.href = resolveAuthPagePath('logout.html');
+        });
+    }
 }
 
 function formatDateForInput(dateValue) {
@@ -379,10 +561,28 @@ function splitStoragePathFromPublicUrl(publicUrl) {
 }
 
 function initSupabase() {
+    if (!SUPABASE_ENABLED) {
+        useSupabase = false;
+        supabaseClient = null;
+        return;
+    }
     if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return;
+    if (window.AuthService && typeof window.AuthService.getSupabaseClient === 'function') {
+        try {
+            supabaseClient = window.AuthService.getSupabaseClient();
+            useSupabase = !!supabaseClient;
+            return;
+        } catch {}
+    }
+    if (window.__SAMS_SUPABASE_CLIENT) {
+        supabaseClient = window.__SAMS_SUPABASE_CLIENT;
+        useSupabase = true;
+        return;
+    }
     if (!window.supabase || typeof window.supabase.createClient !== 'function') return;
 
     supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    window.__SAMS_SUPABASE_CLIENT = supabaseClient;
     useSupabase = true;
 }
 
@@ -576,10 +776,12 @@ function fromDbRow(row, index) {
 async function pullFromSupabase() {
     if (!useSupabase || !supabaseClient) return null;
 
-    const { data, error } = await supabaseClient
-        .from(SUPABASE_TABLE)
-        .select('id, tanggal, observasi_by, departemen, tipe, lokasi, status, photo_data_url, photo_name, photo_description')
-        .order('created_at', { ascending: true });
+    const { data, error } = await withSupabaseRetry(() => (
+        supabaseClient
+            .from(SUPABASE_TABLE)
+            .select('id, tanggal, observasi_by, departemen, tipe, lokasi, status, photo_data_url, photo_name, photo_description')
+            .order('created_at', { ascending: true })
+    ));
 
     if (error) throw error;
     return Array.isArray(data) ? data.map((row, idx) => fromDbRow(row, idx)) : [];
@@ -595,6 +797,39 @@ function logSupabaseError(context, error, extra = null) {
         extra
     };
     console.error('[SAMS][Supabase]', payload);
+}
+
+function isRetryableSupabaseError(error) {
+    const message = String((error && error.message) || error || '').toLowerCase();
+    const code = String((error && error.code) || '').toLowerCase();
+    const status = String((error && error.status) || '').toLowerCase();
+    return (
+        message.includes('failed to fetch') ||
+        message.includes('fetch failed') ||
+        message.includes('<!doctype html>') ||
+        message.includes('cloudflare') ||
+        code === '520' ||
+        status === '520'
+    );
+}
+
+async function withSupabaseRetry(task, options = {}) {
+    const maxAttempts = Number(options.maxAttempts || 3);
+    const baseDelayMs = Number(options.baseDelayMs || 700);
+    let lastError = null;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+        try {
+            return await task();
+        } catch (error) {
+            lastError = error;
+            if (!isRetryableSupabaseError(error) || attempt >= maxAttempts) throw error;
+            const waitMs = baseDelayMs * attempt;
+            await new Promise((resolve) => setTimeout(resolve, waitMs));
+        }
+    }
+
+    throw lastError || new Error('Retry Supabase gagal.');
 }
 
 function chunkArray(items, chunkSize) {
@@ -675,7 +910,6 @@ async function loadInitialData() {
             return;
         } catch (error) {
             logSupabaseError('loadInitialData.pullFromSupabase', error, { table: SUPABASE_TABLE });
-            useSupabase = false;
         }
     }
 
@@ -889,6 +1123,7 @@ function pickAndReadFile(inputElement) {
 }
 
 async function importFromInput(inputElement, labelElement, acceptedHint) {
+    if (!ensureCrudPermission('import')) return;
     const previousRecords = state.records.map((item) => ({ ...item }));
     showGlobalLoading('Mengimpor data...');
 
@@ -961,6 +1196,10 @@ function initP2k3DefaultViewer() {
     const viewer = document.getElementById('pdfViewer');
     if (!viewer) return;
     p2k3State.defaultViewerUrl = viewer.getAttribute('src') || '';
+    if (p2k3State.defaultViewerUrl === 'about:blank') {
+        viewer.style.display = 'none';
+        if (p2k3EmptyState) p2k3EmptyState.style.display = 'block';
+    }
 }
 
 function updateP2k3Viewer(url, fileName) {
@@ -1008,6 +1247,7 @@ function setP2k3State(item) {
 }
 
 async function clearP2k3Upload() {
+    if (!ensureCrudPermission('hapus dokumen P2K3')) return;
     if (!p2k3State.fileUrl && !p2k3State.storagePath && !p2k3State.fileName) {
         showNotification('Belum ada dokumen P2K3 untuk dihapus.', 'info');
         return;
@@ -1036,13 +1276,17 @@ async function clearP2k3Upload() {
         showNotification('Dokumen P2K3 berhasil dihapus.', 'success');
     } catch (error) {
         logSupabaseError('clearP2k3Upload', error, { table: SUPABASE_P2K3_TABLE, bucket: SUPABASE_DOC_BUCKET });
-        showNotification('Gagal hapus dokumen P2K3 dari database.', 'error');
+        revokeObjectUrl(p2k3State.fileUrl);
+        setP2k3State(null);
+        saveP2k3LocalCache(null);
+        showNotification('Supabase gagal. Dokumen P2K3 lokal tetap berhasil dihapus.', 'info');
     } finally {
         hideGlobalLoading();
     }
 }
 
 async function handleP2k3Upload() {
+    if (!ensureCrudPermission('upload dokumen P2K3')) return;
     if (!p2k3UploadInput) return;
     p2k3UploadInput.onchange = null;
     p2k3UploadInput.onchange = async () => {
@@ -1086,7 +1330,16 @@ async function handleP2k3Upload() {
             showNotification('Dokumen P2K3 berhasil diupload.', 'success');
         } catch (error) {
             logSupabaseError('handleP2k3Upload', error, { table: SUPABASE_P2K3_TABLE, bucket: SUPABASE_DOC_BUCKET });
-            showNotification('Upload dokumen P2K3 gagal. Cek konfigurasi Supabase.', 'error');
+            revokeObjectUrl(p2k3State.fileUrl);
+            const localUrl = URL.createObjectURL(file);
+            setP2k3State({ id: '', fileName: file.name, fileUrl: localUrl, storagePath: '' });
+            saveP2k3LocalCache({
+                id: '',
+                fileName: file.name,
+                fileUrl: localUrl,
+                storagePath: ''
+            });
+            showNotification('Supabase gagal. Dokumen P2K3 disimpan sementara di lokal browser.', 'info');
         } finally {
             hideGlobalLoading();
         }
@@ -1097,6 +1350,7 @@ async function handleP2k3Upload() {
 }
 
 async function handleHseUpload() {
+    if (!ensureCrudPermission('upload dokumen HSE')) return;
     if (!hseUploadInput) return;
     hseUploadInput.onchange = null;
     hseUploadInput.onchange = async () => {
@@ -1142,7 +1396,12 @@ async function handleHseUpload() {
             showNotification('Dokumen HSE berhasil diupload.', 'success');
         } catch (error) {
             logSupabaseError('handleHseUpload', error, { table: SUPABASE_HSE_TABLE, bucket: SUPABASE_DOC_BUCKET });
-            showNotification('Upload dokumen HSE gagal. Cek konfigurasi Supabase.', 'error');
+            files.forEach((file) => {
+                hseFiles.unshift({ id: '', name: file.name, url: URL.createObjectURL(file), storagePath: '' });
+            });
+            saveHseLocalCache(hseFiles);
+            renderHseFileLinks();
+            showNotification('Supabase gagal. Dokumen HSE disimpan sementara di lokal browser.', 'info');
         } finally {
             hideGlobalLoading();
         }
@@ -1153,6 +1412,7 @@ async function handleHseUpload() {
 }
 
 async function removeHseUploadByIndex(index) {
+    if (!ensureCrudPermission('hapus dokumen HSE')) return;
     const removed = hseFiles.splice(index, 1)[0];
     if (!removed) return;
 
@@ -1200,6 +1460,7 @@ function renderHseFileLinks() {
 }
 
 async function clearHseUploads() {
+    if (!ensureCrudPermission('hapus semua dokumen HSE')) return;
     if (!hseFiles.length) {
         showNotification('Belum ada dokumen HSE untuk dihapus.', 'info');
         return;
@@ -1230,7 +1491,11 @@ async function clearHseUploads() {
         showNotification('Semua dokumen HSE berhasil dihapus.', 'success');
     } catch (error) {
         logSupabaseError('clearHseUploads', error, { table: SUPABASE_HSE_TABLE, bucket: SUPABASE_DOC_BUCKET });
-        showNotification('Gagal hapus semua dokumen HSE.', 'error');
+        hseFiles.forEach((item) => revokeObjectUrl(item.url));
+        hseFiles.length = 0;
+        saveHseLocalCache([]);
+        renderHseFileLinks();
+        showNotification('Supabase gagal. Dokumen HSE lokal tetap berhasil dihapus.', 'info');
     } finally {
         hideGlobalLoading();
     }
@@ -1735,6 +2000,7 @@ function downloadCsvTemplate(kind = 'observasi') {
 
 // CRUD
 async function clearAllData() {
+    if (!ensureCrudPermission('hapus semua data observasi')) return;
     const confirmed = await showConfirmDialog({
         title: 'Hapus Semua Data?',
         text: 'Semua data observasi akan dikosongkan.',
@@ -1830,6 +2096,7 @@ async function handleCancelObservasiForm() {
 
 async function handleObservasiSubmit(event) {
     event.preventDefault();
+    if (!ensureCrudPermission('simpan data observasi')) return;
 
     if (isPhotoProcessing) {
         showNotification('Foto masih diproses, tunggu beberapa saat.', 'info');
@@ -1884,6 +2151,7 @@ async function handleObservasiSubmit(event) {
 }
 
 async function editObservasi(no) {
+    if (!ensureCrudPermission('edit observasi')) return;
     const item = state.records.find((row) => row.no === no);
     if (!item) {
         showNotification('Data observasi tidak ditemukan.', 'error');
@@ -1907,6 +2175,7 @@ async function editObservasi(no) {
 }
 
 async function deleteObservasi(no) {
+    if (!ensureCrudPermission('hapus observasi')) return;
     const item = state.records.find((row) => row.no === no);
     if (!item) {
         showNotification('Data observasi tidak ditemukan.', 'error');
@@ -1945,6 +2214,7 @@ async function deleteObservasi(no) {
 }
 
 async function updateObservasiStatus(no, status) {
+    if (!ensureCrudPermission('update status observasi')) return;
     const previousRecords = state.records.map((item) => ({ ...item }));
     state.records = state.records.map((item) => item.no === no ? { ...item, status: normalizeStatus(status) } : item);
     showGlobalLoading('Memperbarui status observasi...');
@@ -2079,6 +2349,7 @@ function renderObservasiTable() {
         return;
     }
 
+    const allowCrud = canManageData();
     paged.rows.forEach((item) => {
         const photoCell = item.photoDataUrl
             ? `<a href="${item.photoDataUrl}" target="_blank" rel="noopener noreferrer" class="table-photo-link"><img src="${item.photoDataUrl}" class="table-photo-thumb" alt="Foto observasi ${item.no}" loading="lazy" decoding="async"></a>`
@@ -2098,8 +2369,10 @@ function renderObservasiTable() {
             <td>
                 <div class="table-actions">
                     <button type="button" class="btn-table btn-view btn-icon" data-no="${item.no}" title="Lihat Detail" aria-label="Lihat Detail"><i class="fas fa-eye"></i></button>
-                    <button type="button" class="btn-table btn-edit btn-icon" data-no="${item.no}" title="Edit" aria-label="Edit"><i class="fas fa-pen"></i></button>
-                    <button type="button" class="btn-table btn-delete btn-icon" data-no="${item.no}" title="Hapus" aria-label="Hapus"><i class="fas fa-trash"></i></button>
+                    ${allowCrud
+                        ? `<button type="button" class="btn-table btn-edit btn-icon" data-no="${item.no}" title="Edit" aria-label="Edit"><i class="fas fa-pen"></i></button>
+                           <button type="button" class="btn-table btn-delete btn-icon" data-no="${item.no}" title="Hapus" aria-label="Hapus"><i class="fas fa-trash"></i></button>`
+                        : ''}
                 </div>
             </td>
         `;
@@ -2129,6 +2402,7 @@ function renderProgressTable() {
         return;
     }
 
+    const allowCrud = canManageData();
     paged.rows.forEach((item) => {
         const photoCell = item.photoDataUrl
             ? `<a href="${item.photoDataUrl}" target="_blank" rel="noopener noreferrer" class="table-photo-link"><img src="${item.photoDataUrl}" class="table-photo-thumb" alt="Foto observasi ${item.no}" loading="lazy" decoding="async"></a>`
@@ -2145,7 +2419,7 @@ function renderProgressTable() {
             <td class="table-photo-cell">${photoCell}</td>
             <td class="table-text-muted">${escapeHtml(item.photoDescription || '-')}</td>
             <td class="progress-status-cell">
-                <select class="progress-status-select" data-no="${item.no}">
+                <select class="progress-status-select" data-no="${item.no}" ${allowCrud ? '' : 'disabled'}>
                     <option value="Pending" ${item.status === 'Pending' ? 'selected' : ''}>Pending</option>
                     <option value="In Progress" ${item.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
                     <option value="Done" ${item.status === 'Done' ? 'selected' : ''}>Done</option>
@@ -2154,8 +2428,10 @@ function renderProgressTable() {
             <td>
                 <div class="table-actions">
                     <button type="button" class="btn-table btn-view btn-icon" data-no="${item.no}" title="Lihat Detail" aria-label="Lihat Detail"><i class="fas fa-eye"></i></button>
-                    <button type="button" class="btn-table btn-edit btn-icon" data-no="${item.no}" title="Edit" aria-label="Edit"><i class="fas fa-pen"></i></button>
-                    <button type="button" class="btn-table btn-delete btn-icon" data-no="${item.no}" title="Hapus" aria-label="Hapus"><i class="fas fa-trash"></i></button>
+                    ${allowCrud
+                        ? `<button type="button" class="btn-table btn-edit btn-icon" data-no="${item.no}" title="Edit" aria-label="Edit"><i class="fas fa-pen"></i></button>
+                           <button type="button" class="btn-table btn-delete btn-icon" data-no="${item.no}" title="Hapus" aria-label="Hapus"><i class="fas fa-trash"></i></button>`
+                        : ''}
                 </div>
             </td>
         `;
@@ -2542,6 +2818,7 @@ const SECTION_PAGE_MAP = {
     'p2k3-bma': 'pages/p2k3-bma.html',
     'tambahkan-observasi': 'pages/tambahkan-observasi.html',
     'safety-induction': 'pages/safety-induction.html',
+    'profile': 'pages/profile.html',
     'data-observasi': 'pages/data-observasi.html',
     'observasi-report': 'pages/observasi-report.html',
     'observasi-progress': 'pages/observasi-progress.html'
@@ -2574,6 +2851,7 @@ function navigateByKeyword(term) {
         { section: 'tambahkan-observasi', keys: ['tambah observasi', 'submit observasi', 'hse observasi', 'form observasi'] },
         { section: 'safety-induction', keys: ['safety induction', 'induction', 'materi safety'] },
         { section: 'data-observasi', keys: ['data observasi', 'observasi', 'data'] },
+        { section: 'profile', keys: ['profile', 'profil', 'akun', 'user'] },
         { section: 'observasi-report', keys: ['observasi report', 'report', 'grafik', 'chart'] },
         { section: 'observasi-progress', keys: ['observasi progress', 'progress', 'tindak lanjut', 'status'] }
     ];
@@ -2799,6 +3077,11 @@ if (progressTableBody) {
         const target = event.target;
         if (!(target instanceof HTMLSelectElement)) return;
         if (!target.classList.contains('progress-status-select')) return;
+        if (!canManageData()) {
+            showNotification('Role viewer hanya dapat melihat data.', 'error');
+            renderProgressTable();
+            return;
+        }
 
         const no = Number(target.dataset.no);
         if (!no) return;
@@ -2974,6 +3257,7 @@ const observer = new IntersectionObserver((entries) => {
 
 document.addEventListener('DOMContentLoaded', async () => {
     showGlobalLoading('Menyiapkan website...');
+    createNavUserControls();
     applyCurrentYearLabels();
     applyPageVisibilityByConfig();
     applyActiveNavigationByPath();
@@ -2986,13 +3270,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
         await loadInitialData();
         await loadSupportingDocumentData();
+        await loadCurrentUserContext();
+        bindNavUserActions();
+        applyRoleBasedUi();
         renderAllObservasiViews();
 
+        const shownBackendState = getBackendStatusShownOnce();
         if (useSupabase) {
-            showNotification('Backend Supabase aktif.', 'success');
-        } else {
-            showNotification('Backend localStorage aktif. Tambahkan config Supabase untuk mode cloud.', 'info');
+            if (shownBackendState !== BACKEND_STATUS_VALUE_ACTIVE) {
+                showNotification('Backend Supabase aktif normal.', 'success');
+                setBackendStatusShownOnce(BACKEND_STATUS_VALUE_ACTIVE);
+            }
+        } else if (shownBackendState !== BACKEND_STATUS_VALUE_INACTIVE) {
+            showNotification('Backend Supabase nonaktif. Mode lokal digunakan.', 'info');
+            setBackendStatusShownOnce(BACKEND_STATUS_VALUE_INACTIVE);
         }
+    } catch (error) {
+        const shownBackendState = getBackendStatusShownOnce();
+        if (shownBackendState !== BACKEND_STATUS_VALUE_ERROR) {
+            const message = error && error.message ? error.message : 'Terjadi kesalahan saat menghubungkan backend.';
+            showNotification(`Backend error: ${message}`, 'error');
+            setBackendStatusShownOnce(BACKEND_STATUS_VALUE_ERROR);
+        }
+        console.error('[SAMS][Bootstrap]', error);
     } finally {
         hideGlobalLoading();
     }

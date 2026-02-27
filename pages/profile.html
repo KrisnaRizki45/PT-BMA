@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <script>
+        (function () {
+            try {
+                if (localStorage.getItem('sams_sidebar_collapsed_v1') === '1') {
+                    document.documentElement.classList.add('sidebar-collapsed-pref');
+                }
+            } catch (error) {}
+        })();
+    </script>
+    <title>SAMS - BMA 2026 | Profile</title>
+    <link rel="stylesheet" href="../styles/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .profile-card {
+            max-width: 560px;
+            margin: 0 auto;
+            background: #fff;
+            border: 1px solid #dce4ec;
+            border-radius: 12px;
+            padding: 1rem 1.1rem;
+            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+        }
+        .profile-form {
+            display: grid;
+            gap: 0.7rem;
+        }
+        .profile-form label {
+            display: grid;
+            gap: 0.3rem;
+            font-weight: 600;
+        }
+        .profile-form input {
+            border: 1px solid #d6e0e8;
+            border-radius: 8px;
+            padding: 0.58rem 0.7rem;
+        }
+        .profile-photo-wrap {
+            display: grid;
+            justify-items: center;
+            gap: 0.55rem;
+            margin-bottom: 0.6rem;
+        }
+        .profile-photo-preview {
+            width: 120px;
+            height: 120px;
+            border-radius: 999px;
+            object-fit: cover;
+            background: #e6eef5;
+            border: 3px solid #d4e1eb;
+        }
+        .profile-mode-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.45rem;
+            margin-top: 0.9rem;
+            justify-content: flex-end;
+            border-top: 1px solid #e6edf3;
+            padding-top: 0.8rem;
+        }
+        .profile-mode-actions .btn {
+            padding: 0.55rem 0.8rem;
+            font-size: 0.9rem;
+        }
+        .profile-form.readonly input:not([type="file"]) {
+            background: #f4f7fa;
+            color: #5a6f7d;
+        }
+    </style>
+</head>
+<body data-auth-redirect="./auth/login.html" class="layout-sidebar" data-visible-sections="profile">
+    <div id="globalLoading" class="global-loading" aria-live="polite" aria-busy="false">
+        <div class="global-loading-content">
+            <div class="global-loading-spinner"></div>
+            <p id="globalLoadingText">Loading...</p>
+        </div>
+    </div>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <button class="sidebar-toggle" id="sidebarToggle" type="button" aria-label="Buka/Tutup Menu Samping">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="nav-brand">
+                <i class="fas fa-hard-hat"></i>
+                <span data-current-year-text="SAMS - BMA">SAMS - BMA 2026</span>
+            </div>
+            <button class="nav-toggle" id="navToggle" type="button">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="nav-search-wrap" id="navSearchWrap">
+                <input type="text" id="navSearchInput" class="nav-search-input" placeholder="Cari menu...">
+                <button type="button" id="navSearchBtn" class="nav-search-btn" aria-expanded="false" aria-label="Buka pencarian">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+            <ul class="nav-menu" id="navMenu"></ul>
+        </div>
+    </nav>
+
+    <aside class="sidebar" id="sidebarMenu">
+        <div class="sidebar-logo">
+            <div class="sidebar-logo-title">
+                <i class="fas fa-hard-hat"></i>
+                <span>SAMS Menu</span>
+            </div>
+            <button type="button" class="sidebar-close-btn" id="sidebarCloseBtn" aria-label="Tutup menu samping">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+        </div>
+        <a href="../index.html" class="sidebar-link"><i class="fas fa-house"></i><span>Beranda</span></a>
+        <a href="info-hse.html" class="sidebar-link"><i class="fas fa-shield-halved"></i><span>Info HSE</span></a>
+        <a href="p2k3-bma.html" class="sidebar-link"><i class="fas fa-users-gear"></i><span>P2K3 BMA</span></a>
+        <a href="tambahkan-observasi.html" class="sidebar-link"><i class="fas fa-file-circle-plus"></i><span>Tambahkan Observasi</span></a>
+        <a href="safety-induction.html" class="sidebar-link"><i class="fas fa-video"></i><span>Safety Induction</span></a>
+        <a href="data-observasi.html" class="sidebar-link"><i class="fas fa-table-list"></i><span>Data Observasi</span></a>
+        <a href="observasi-report.html" class="sidebar-link"><i class="fas fa-chart-pie"></i><span>Observasi Report</span></a>
+        <a href="observasi-progress.html" class="sidebar-link"><i class="fas fa-list-check"></i><span>Observasi Progress</span></a>
+    </aside>
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <section id="profile" class="welcome-section">
+        <div class="container">
+            <h2 class="section-title">PROFILE USER</h2>
+            <div class="profile-card">
+                <p style="margin-top:0;color:#5c6f7d;">Kelola data profile Anda. Role menentukan akses CRUD aplikasi.</p>
+                <form id="profileForm" class="profile-form readonly" novalidate>
+                    <div class="profile-photo-wrap">
+                        <img id="profilePhotoPreview" class="profile-photo-preview" src="../assets/logo_Bhumiadya.png" alt="Foto profil">
+                        <input id="profilePhotoFile" type="file" accept="image/*" disabled>
+                    </div>
+                    <label>Nama Lengkap
+                        <input id="profileFullName" type="text" autocomplete="name" disabled>
+                    </label>
+                    <label>Email
+                        <input id="profileEmail" type="email" readonly>
+                    </label>
+                    <label>Role
+                        <input id="profileRole" type="text" readonly>
+                    </label>
+                    <label>Jabatan
+                        <input id="profileJobTitle" type="text" disabled>
+                    </label>
+                </form>
+
+                <div class="profile-mode-actions">
+                    <button type="button" class="btn btn-secondary" id="profileEditModeBtn">Edit Profile</button>
+                    <button type="button" class="btn btn-primary" id="profileSaveBtn" style="display:none;">Simpan</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <p data-current-year-html="&copy; HSE | PT BHUMIADYA INDONESIA |">&copy; HSE | PT BHUMIADYA INDONESIA | 2026</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../supabase-config.js"></script>
+    <script src="../scripts/auth/auth-service.js"></script>
+    <script src="../scripts/auth/auth-guard.js"></script>
+    <script src="../scripts/auth/protect-page.js"></script>
+    <script src="../scripts/auth/profile.js"></script>
+    <script src="../script.js"></script>
+</body>
+</html>
