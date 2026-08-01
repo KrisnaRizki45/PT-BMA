@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | SAMS - BMA</title>
+    <link rel="stylesheet" href="../../styles/auth/auth.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <main class="auth-card">
+        <div class="auth-brand">
+            <i class="fas fa-hard-hat"></i>
+            <span>SAMS - BMA 2026</span>
+        </div>
+        <h1>Login</h1>
+        <p class="auth-subtitle">Masuk ke dashboard observasi.</p>
+
+        <form id="loginForm" class="auth-form" novalidate>
+            <label>Email
+                <input id="email" type="email" autocomplete="email" required>
+            </label>
+            <label>Password
+                <input id="password" type="password" autocomplete="current-password" required>
+            </label>
+            <div class="auth-actions">
+                <button type="submit" class="btn-auth">Masuk</button>
+            </div>
+        </form>
+
+        <div id="authStatus" class="auth-status"></div>
+
+        <div class="auth-links">
+            <a href="./forgot-password.html">Lupa password?</a>
+            <a href="./register.html">Belum punya akun? Registrasi</a>
+        </div>
+
+        <div class="auth-footer">PT Bhumiadya Indonesia</div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../../supabase-config.js"></script>
+    <script src="../../scripts/auth/auth-service.js"></script>
+    <script src="../../scripts/auth/auth-guard.js"></script>
+    <script src="../../scripts/auth/password-toggle.js"></script>
+    <script src="../../scripts/auth/login.js"></script>
+</body>
+</html>
