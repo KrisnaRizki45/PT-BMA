@@ -125,7 +125,7 @@ const userContext = {
     id: '',
     email: '',
     fullName: '',
-    role: ROLE_VIEWER
+    role: ROLE_ADMIN
 };
 
 const state = {
@@ -281,7 +281,7 @@ function formatDateForDisplay(dateValue) {
 
 function normalizeUserRole(rawRole) {
     const role = String(rawRole || '').trim().toLowerCase();
-    return role === ROLE_ADMIN ? ROLE_ADMIN : ROLE_VIEWER;
+    return role === ROLE_ADMIN ? ROLE_ADMIN : ROLE_ADMIN;
 }
 
 function canManageData() {
@@ -369,7 +369,7 @@ async function loadCurrentUserContext() {
         userContext.id = String(user.id || '');
         userContext.email = String(user.email || '');
         userContext.fullName = String((user.user_metadata && user.user_metadata.full_name) || '');
-        userContext.role = ROLE_VIEWER;
+        userContext.role = ROLE_ADMIN;
 
         const client = window.AuthService.getSupabaseClient();
         if (!client || !userContext.id) return;
@@ -3278,7 +3278,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const shownBackendState = getBackendStatusShownOnce();
         if (useSupabase) {
             if (shownBackendState !== BACKEND_STATUS_VALUE_ACTIVE) {
-                showNotification('Backend Supabase aktif normal.', 'success');
+                showNotification('Backend Supabase Aktif.', 'success');
                 setBackendStatusShownOnce(BACKEND_STATUS_VALUE_ACTIVE);
             }
         } else if (shownBackendState !== BACKEND_STATUS_VALUE_INACTIVE) {

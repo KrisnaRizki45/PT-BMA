@@ -1,4 +1,4 @@
-function setStatus(type, message) {
+﻿function setStatus(type, message) {
     const box = document.getElementById('authStatus');
     if (!box) return;
     box.className = `auth-status ${type} active`;
@@ -30,7 +30,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             setStatus('success', 'Login berhasil. Mengalihkan...');
             window.location.href = '../../index.html';
         } catch (error) {
-            setStatus('error', error.message || 'Login gagal.');
+            const message = String(error && error.message ? error.message : 'Login gagal.');
+            setStatus('error', message);
+            if (message.toLowerCase().includes('tidak dapat terhubung ke supabase')) {
+                console.error('[AUTH][CONFIG] Periksa supabase-config.js -> SAMS_SUPABASE_URL dan SAMS_SUPABASE_ANON_KEY');
+            }
         }
     });
 });
+

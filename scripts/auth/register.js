@@ -37,7 +37,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         try {
             setStatus('info', 'Mendaftarkan akun...');
-            await window.AuthService.signUp(email, password, { full_name: fullName, job_title: jobTitle });
+            const data = await window.AuthService.signUp(email, password, {
+                full_name: fullName,
+                job_title: jobTitle,
+                role: 'admin'
+            });
+
+            if (data && data.session && data.user) {
+                const client = window.AuthService.getSupabaseClient();
+                await client.from(window.SAMS_SUPABASE_PROFILE_TABLE || 'profiles').upsert({
+                    id: data.user.id,
+                    full_name: fullName,
+                    job_title: jobTitle,
+                    role: 'admin'
+                }, { onConflict: 'id' });
+            }
+
             setStatus('success', 'Registrasi berhasil. Cek email untuk verifikasi sebelum login.');
         } catch (error) {
             setStatus('error', error.message || 'Registrasi gagal.');

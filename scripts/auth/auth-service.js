@@ -1,8 +1,28 @@
-(function () {
+﻿(function () {
     let client = null;
     const SESSION_MAX_MS = 30 * 60 * 1000; // 30 menit
     const SESSION_LOGIN_AT_KEY = 'sams_login_at';
     const AUTH_STORAGE_KEY_HINTS = ['auth-token', 'supabase.auth.token', 'sb-'];
+
+    function normalizeSupabaseUrl(raw) {
+        return String(raw || '').trim().replace(/\/+$/, '');
+    }
+
+    function isNetworkLikeError(error) {
+        const message = String((error && error.message) || '').toLowerCase();
+        return error instanceof TypeError
+            || message.includes('failed to fetch')
+            || message.includes('fetch')
+            || message.includes('name_not_resolved')
+            || message.includes('network');
+    }
+
+    function createConnectionError(url) {
+        return new Error(
+            `Tidak dapat terhubung ke Supabase (${url || 'URL kosong'}). ` +
+            'Periksa SAMS_SUPABASE_URL di supabase-config.js (harus dari Dashboard Supabase).'
+        );
+    }
 
     function getSupabaseClient() {
         if (client) return client;
@@ -12,7 +32,7 @@
         }
 
         const supabaseFactory = window.supabase;
-        const url = window.SAMS_SUPABASE_URL || '';
+        const url = normalizeSupabaseUrl(window.SAMS_SUPABASE_URL || '');
         const key = window.SAMS_SUPABASE_ANON_KEY || '';
 
         if (!supabaseFactory || typeof supabaseFactory.createClient !== 'function') {
@@ -20,6 +40,9 @@
         }
         if (!url || !key) {
             throw new Error('Konfigurasi Supabase (URL/ANON KEY) belum diisi.');
+        }
+        if (!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url)) {
+            throw new Error(`Format SAMS_SUPABASE_URL tidak valid: ${url}`);
         }
 
         client = supabaseFactory.createClient(url, key);
@@ -52,10 +75,15 @@
 
     async function signInWithPassword(email, password) {
         const supabase = getSupabaseClient();
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        setLoginTimestamp(Date.now());
-        return data;
+        try {
+            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+            if (error) throw error;
+            setLoginTimestamp(Date.now());
+            return data;
+        } catch (error) {
+            if (isNetworkLikeError(error)) throw createConnectionError(window.SAMS_SUPABASE_URL);
+            throw error;
+        }
     }
 
     async function signUp(email, password, metadata) {

@@ -337,11 +337,12 @@ security definer
 set search_path = public
 as $$
 begin
-  insert into public.profiles (id, full_name, job_title)
+  insert into public.profiles (id, full_name, job_title, role)
   values (
     new.id,
     coalesce(new.raw_user_meta_data->>'full_name', ''),
-    coalesce(new.raw_user_meta_data->>'job_title', '')
+    coalesce(new.raw_user_meta_data->>'job_title', ''),
+    coalesce(new.raw_user_meta_data->>'role', 'admin')
   );
   return new;
 end;
